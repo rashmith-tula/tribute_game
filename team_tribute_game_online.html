@@ -1,0 +1,162 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Team Tribute Game with Firebase</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            text-align: center;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px auto;
+            max-width: 1000px;
+        }
+        .card {
+            background: white;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            margin: 10px;
+            width: 200px;
+            padding: 10px;
+            box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+        }
+        .card textarea {
+            width: 100%;
+            height: 80px;
+            margin-bottom: 10px;
+        }
+        .comments {
+            text-align: left;
+            display: none;
+        }
+        .comments ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<h1>💬 Team Tribute Game 💬</h1>
+<p>Write a kind or fun message for each teammate. Click 'Submit'. All comments will be revealed at the end!</p>
+
+<div class="grid" id="cardGrid"></div>
+
+<button class="button" onclick="revealAll()">🔓 Reveal All Comments</button>
+
+<script>
+    
+const firebaseConfig = {
+  apiKey: "AIzaSyBd3CpowxCtVvnqV5MlyN-t0jVEMvDTXgo",
+  authDomain: "tributegame-5b871.firebaseapp.com",
+  projectId: "tributegame-5b871",
+  storageBucket: "tributegame-5b871.firebasestorage.app",
+  messagingSenderId: "757938343666",
+  appId: "1:757938343666:web:aa5f13826b0e360b0a8a6b",
+  measurementId: "G-5SDNERCN2D"
+};
+
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    const teamMembers = ["Robert", "Tim", "Rashmith", "Prasanta", "Nirmal", "Aditya", "Mangesh", "Haripriya", "Kashika", "Vivek", "Akanksha", "Rishabh", "Raunit"];
+
+    function createCards() {
+        const grid = document.getElementById('cardGrid');
+        teamMembers.forEach(name => {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const title = document.createElement('h3');
+            title.innerText = name;
+
+            const textarea = document.createElement('textarea');
+            textarea.placeholder = `Write something for ${name}...`;
+
+            const submitBtn = document.createElement('button');
+            submitBtn.className = 'button';
+            submitBtn.innerText = 'Submit';
+            submitBtn.onclick = async () => {
+                const comment = textarea.value.trim();
+                if (comment) {
+                    await db.collection("comments").add({
+                        recipient: name,
+                        message: comment,
+                        timestamp: new Date()
+                    });
+                    textarea.value = "";
+                    alert("Comment submitted anonymously!");
+                }
+            };
+
+            const commentSection = document.createElement('div');
+            commentSection.className = 'comments';
+            commentSection.id = `comments-${name}`;
+
+            const commentList = document.createElement('ul');
+            commentSection.appendChild(commentList);
+
+            card.appendChild(title);
+            card.appendChild(textarea);
+            card.appendChild(submitBtn);
+            card.appendChild(commentSection);
+            grid.appendChild(card);
+        });
+    }
+
+    async function revealAll() {
+        const snapshot = await db.collection("comments").orderBy("timestamp").get();
+        const commentsByPerson = {};
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (!commentsByPerson[data.recipient]) {
+                commentsByPerson[data.recipient] = [];
+            }
+            commentsByPerson[data.recipient].push(data.message);
+        });
+
+        teamMembers.forEach(name => {
+            const section = document.getElementById(`comments-${name}`);
+            const list = section.querySelector('ul');
+            list.innerHTML = "";
+            (commentsByPerson[name] || []).forEach(comment => {
+                const li = document.createElement('li');
+                li.innerText = comment;
+                list.appendChild(li);
+            });
+            section.style.display = 'block';
+        });
+
+        document.querySelectorAll('textarea').forEach(t => t.style.display = 'none');
+        document.querySelectorAll('.card .button').forEach(b => b.style.display = 'none');
+    }
+
+    createCards();
+</script>
+
+</body>
+</html>
