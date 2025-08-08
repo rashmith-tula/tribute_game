@@ -331,9 +331,9 @@
         const rows = Array.from(counts.entries())
           .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]))
           .map(([title,cnt])=> `<div class="title-count"><span>${title}</span><span>x${cnt}</span></div>`)
-          .join('') || '<div class="small">No assignments yet.</div>';
+          .join('') || '<div class="small">No crowns yet.</div>';
 
-        resWrap.innerHTML = `<h4>Assigned Titles</h4>${rows}`;
+        resWrap.innerHTML = `<h4>Crowns</h4>${rows}`;
         resWrap.classList.remove('hidden');
         box.classList.add('box-highlight');
       }
@@ -351,7 +351,7 @@
     clearAllBtn.addEventListener('click', async ()=>{
       const pw = prompt('Enter password to CLEAR ALL data:');
       if(pw !== 'BicycleRocks') return alert('Incorrect password.');
-      if(!confirm('This will permanently delete ALL titles and assignments. Continue?')) return;
+      if(!confirm('This will permanently delete ALL the crowns and their assignments. Continue?')) return;
 
       async function deleteCollection(name){
         const snap = await db.collection(name).get();
