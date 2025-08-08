@@ -38,7 +38,7 @@
 
     /* 75 / 25 layout that expands to full */
     .layout { display:grid; grid-template-columns: 3fr 1fr; gap:16px; align-items:start; }
-    .layout.full { grid-template-columns: 1fr; } /* expand when sidebar hidden */
+    .layout.full { grid-template-columns: 1fr; }
 
     /* left: members grid */
     .grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
@@ -46,14 +46,15 @@
     .member-header { font-weight:bold; margin-bottom:8px; color:#0f172a; }
     .dropzone { min-height:72px; display:flex; flex-wrap:wrap; gap:6px; }
     .chip { background:#e0f2fe; border:1px solid #7dd3fc; color:#0c4a6e; padding:6px 10px; border-radius:9999px; display:inline-flex; align-items:center; cursor:grab; }
-    .chip[draggable="true"] { user-select:none; }
+    /* Ensure chips inside member boxes never expand full width */
+    .dropzone .chip { display:inline-flex !important; }
     .box-highlight { border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,0.15); }
 
     /* right: titles list */
     .sidebar { border-left:1px solid #e5e7eb; padding-left:12px; }
     .sidebar h3 { margin:4px 0 10px; }
-    .pool-list { /* dynamic height set by JS */ height: 100vh; overflow:auto; border:2px dashed #cbd5e1; border-radius:10px; padding:10px; background:#f1f5f9; display:flex; flex-direction:column; gap:8px; }
-    .pool-row { display:block; } /* one row per title */
+    .pool-list { overflow:auto; border:2px dashed #cbd5e1; border-radius:10px; padding:10px; background:#f1f5f9; display:flex; flex-direction:column; gap:8px; }
+    .pool-row { display:block; } /* one title per row in sidebar */
 
     /* controls */
     .controls { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
@@ -138,11 +139,10 @@
     function showToast(msg='Titles submitted'){ toast.textContent=msg; toast.style.display='block'; setTimeout(()=>toast.style.display='none',2000); }
     function setSpinning(on){ spinner.style.display = on ? 'inline-block' : 'none'; }
 
-    // Dynamically size the right list to the bottom of the viewport
+    // Dynamically size the right list to bottom of viewport
     function sizeSidebar(){
       if(!poolZone || poolZone.offsetParent === null) return; // hidden
       const rect = poolZone.getBoundingClientRect();
-      // 16px breathing room at bottom
       const maxH = Math.max(120, Math.floor(window.innerHeight - rect.top - 16));
       poolZone.style.maxHeight = maxH + 'px';
     }
@@ -151,7 +151,7 @@
     // DnD
     function createChip(text){
       const chip = document.createElement('span');
-      chip.className = 'chip pool-row';
+      chip.className = 'chip pool-row';          // block in sidebar
       chip.textContent = text;
       chip.draggable = true;
       chip.addEventListener('dragstart', (e)=>{ if(resultsMode) return; draggedEl=chip; e.dataTransfer.setData('text/plain', text); });
@@ -160,7 +160,19 @@
     }
     function makeDropzone(zone){
       zone.addEventListener('dragover', (e)=>{ if(resultsMode) return; e.preventDefault(); });
-      zone.addEventListener('drop', (e)=>{ if(resultsMode) return; e.preventDefault(); if(!draggedEl) return; zone.appendChild(draggedEl); });
+      zone.addEventListener('drop', (e)=>{
+        if(resultsMode) return;
+        e.preventDefault();
+        if(!draggedEl) return;
+        zone.appendChild(draggedEl);
+
+        // >>> FIX: chips in member boxes shouldn't be full-width
+        if(zone === poolZone){
+          draggedEl.classList.add('pool-row');   // one-per-row in sidebar
+        }else{
+          draggedEl.classList.remove('pool-row'); // inline pills in dropzones
+        }
+      });
     }
 
     function renderMembers(){
@@ -263,13 +275,13 @@
     function enterResultsMode(){
       resultsMode = true;
       sidebar.classList.add('hidden');
-      layout.classList.add('full');  // expand left to full width
+      layout.classList.add('full');
       unlockBtn.classList.add('hidden');
       submitAssignBtn.classList.add('hidden');
       showNextBtn.classList.remove('hidden');
 
       membersGrid.querySelectorAll('.chip').forEach(ch=> ch.draggable=false);
-      sizeSidebar(); // harmless if sidebar hidden
+      sizeSidebar();
     }
 
     document.getElementById('unlockResults').addEventListener('click', ()=>{
