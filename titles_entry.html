@@ -19,6 +19,9 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+	db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
+	// Optional: see the real error instead of generic CORS
+    firebase.firestore.setLogLevel('debug');
   </script>
   <style>
     :root {
