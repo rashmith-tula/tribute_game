@@ -44,10 +44,10 @@
     .grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
     .member-box { border:2px dashed #cbd5e1; border-radius:12px; padding:10px; min-height:140px; background:#f8fafc; transition: border-color .2s, box-shadow .2s; }
     .member-header { font-weight:bold; margin-bottom:8px; color:#0f172a; }
-    .dropzone { min-height:72px; display:flex; flex-wrap:wrap; gap:6px; }
+    .dropzone { min-height:72px; display:flex; flex-wrap:wrap; gap:6px; align-items: flex-start; }
     .chip { background:#e0f2fe; border:1px solid #7dd3fc; color:#0c4a6e; padding:6px 10px; border-radius:9999px; display:inline-flex; align-items:center; cursor:grab; }
     /* Ensure chips inside member boxes never expand full width */
-    .dropzone .chip { display:inline-flex !important; }
+    .dropzone .chip { display:inline-flex !important; flex: 0 0 auto; line-height: 1.2; padding: 6px 10px; }
     .box-highlight { border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,0.15); }
 
     /* right: titles list */
