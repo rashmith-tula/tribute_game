@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Team Titles – Submit Titles</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Firebase config (uses your existing project)
+    const firebaseConfig = {
+      apiKey: "AIzaSyBd3CpowxCtVvnqV5MlyN-t0jVEMvDTXgo",
+      authDomain: "tributegame-5b871.firebaseapp.com",
+      projectId: "tributegame-5b871",
+      storageBucket: "tributegame-5b871.appspot.com",
+      messagingSenderId: "757938343666",
+      appId: "1:757938343666:web:aa5f13826b0e360b0a8a6b",
+      measurementId: "G-5SDNERCN2D"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+  <style>
+    :root {
+      --primary:#2563eb;
+      --primary-light:#93c5fd;
+      --bg:#f7f7fb;
+      --text:#111827;
+    }
+    * { box-sizing:border-box; }
+    body { font-family: Arial, sans-serif; background:var(--bg); margin:0; }
+    header { background:#1f2937; color:#fff; padding:16px 24px; }
+    h1 { margin:0; font-size:22px; }
+    main { max-width:900px; margin:24px auto; background:#fff; padding:24px; border-radius:12px; box-shadow:0 4px 18px rgba(0,0,0,0.08);}
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    input[type="text"] { flex:1; padding:12px 14px; border:1px solid #d1d5db; border-radius:8px; font-size:16px; }
+    button { padding:10px 14px; border:none; border-radius:8px; cursor:pointer; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-primary:disabled { background:var(--primary-light); cursor:not-allowed; }
+    .btn-secondary { background:#6b7280; color:#fff; }
+    .hint { color:#374151; font-size:14px; margin-top:8px; }
+    .error { color:#b91c1c; font-size:14px; margin-top:6px; }
+    ul#titleList { list-style:none; padding:0; margin:16px 0 0; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px; }
+    .chip { background:#eef2ff; border:1px solid #c7d2fe; color:#1e3a8a; padding:8px 10px; border-radius:9999px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+    .chip .remove { background:transparent; color:#1e3a8a; border:none; cursor:pointer; font-weight:bold; }
+    footer { margin-top:20px; display:flex; gap:12px; align-items:center; }
+    .count { color:var(--text); font-weight:bold; }
+
+    /* Instructions list */
+    .instructions { 
+      margin:0 0 14px 0; padding-left:18px; color:#374151;
+    }
+    .instructions li { margin:6px 0; }
+
+    /* Spinner */
+    .spinner { 
+      width:20px; height:20px; border:3px solid #e5e7eb; border-top-color:var(--primary); border-radius:50%; 
+      animation: spin 1s linear infinite; display:none; 
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    #toast { 
+      position: fixed; right:20px; bottom:20px; background:#111827; color:#fff; 
+      padding:10px 14px; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.2); 
+      display:none; z-index:9999;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Title Collector (Screen 1)</h1>
+  </header>
+  <main>
+    <ul class="instructions">
+      <li>Just type a title that starts with <strong>Mx.</strong> or <strong>The</strong>.</li>
+      <li>E.g., <em>Mx.Perfect</em>, <em>The Smart Coder</em>.</li>
+      <li>Enter at least <strong>15</strong> unique titles.</li>
+    </ul>
+    <div class="row">
+      <input id="titleInput" type="text" placeholder="e.g., mx.perfect, the smart coder" />
+      <button id="addBtn" class="btn-secondary">Add</button>
+    </div>
+    <div id="errorBox" class="error" style="display:none;"></div>
+    <ul id="titleList"></ul>
+    <footer>
+      <span class="count">Total valid titles: <span id="count">0</span></span>
+      <div class="spinner" id="spinner"></div>
+      <button id="submitBtn" class="btn-primary" disabled>Submit All to Firebase</button>
+    </footer>
+  </main>
+
+  <div id="toast">Saved!</div>
+
+  <script>
+    const inputEl = document.getElementById('titleInput');
+    const addBtn = document.getElementById('addBtn');
+    const listEl = document.getElementById('titleList');
+    const countEl = document.getElementById('count');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorBox = document.getElementById('errorBox');
+    const spinner = document.getElementById('spinner');
+    const toast = document.getElementById('toast');
+
+    const titles = new Map(); // key: normalizedLower -> canonical text
+
+    function cleanSpaces(str) {
+      return str.replace(/\s+/g, ' ').trim();
+    }
+
+    function toTitleCaseWord(w) {
+      if (!w) return w;
+      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+    }
+
+    function normalizeUserTitle(raw) {
+      if (!raw || !raw.trim()) return null;
+      let s = raw.replace(/\s+/g, ' ').trim();
+
+      // capture prefix and remainder (case-insensitive), allow missing space after prefix
+      const m = s.match(/^\s*(mx\.?|the)\s*(.*)$/i);
+      if (!m) return null; // must start with mx. or the
+
+      let prefix = m[1].toLowerCase();
+      let rest = (m[2] || '').trim();
+
+      // standardize prefix
+      if (prefix.startsWith('mx')) prefix = 'Mx.'; else prefix = 'The';
+
+      if (!rest) return null; // need some words after prefix
+
+      // collapse multiple spaces and enforce Title Case on rest
+      rest = rest.replace(/\s+/g,' ').trim();
+      const words = rest.split(' ').map(toTitleCaseWord);
+      const formatted = prefix + ' ' + words.join(' ');
+
+      // final cleanup
+      return cleanSpaces(formatted);
+    }
+
+    function keyFor(title) { return title.toLowerCase(); }
+
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.style.display = 'block';
+      setTimeout(() => (errorBox.style.display = 'none'), 2200);
+    }
+
+    function showToast(msg='Titles submitted successfully!') {
+      toast.textContent = msg;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 2200);
+    }
+
+    function renderList() {
+      listEl.innerHTML = '';
+      Array.from(titles.values()).forEach((t) => {
+        const li = document.createElement('li');
+        li.className = 'chip';
+        li.innerHTML = `<span>${t}</span> <button class="remove" title="Remove" aria-label="Remove">&times;</button>`;
+        li.querySelector('.remove').onclick = () => {
+          titles.delete(keyFor(t));
+          renderList();
+        };
+        listEl.appendChild(li);
+      });
+      countEl.textContent = titles.size;
+      submitBtn.disabled = titles.size < 15;
+    }
+
+    function tryAddTitle() {
+      const normalized = normalizeUserTitle(inputEl.value);
+      if (!normalized) {
+        showError("Title must start with 'Mx.' or 'The' and contain words after it.");
+        return;
+      }
+      const key = keyFor(normalized);
+      if (titles.has(key)) {
+        showError('Duplicate title not allowed.');
+        return;
+      }
+      titles.set(key, normalized);
+      inputEl.value = '';
+      renderList();
+    }
+
+    addBtn.addEventListener('click', tryAddTitle);
+    inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') tryAddTitle(); });
+
+    async function submitAll() {
+      submitBtn.disabled = true;
+      addBtn.disabled = true;
+      inputEl.disabled = true;
+      spinner.style.display = 'inline-block';
+      try {
+        const batch = db.batch();
+        for (const [k, text] of titles.entries()) {
+          const safeId = encodeURIComponent(k.replace(/[.#$/\[\]]/g, '_'));
+          const ref = db.collection('titles').doc(safeId);
+          batch.set(ref, { text, createdAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        }
+        await batch.commit();
+        // Clear UI state
+        titles.clear();
+        renderList();
+        showToast('Titles submitted successfully!');
+      } catch (err) {
+        console.error(err);
+        alert('Error submitting titles: ' + err.message);
+      } finally {
+        spinner.style.display = 'none';
+        addBtn.disabled = false;
+        inputEl.disabled = false;
+        submitBtn.disabled = titles.size < 15;
+        inputEl.focus();
+      }
+    }
+
+    submitBtn.addEventListener('click', submitAll);
+  </script>
+</body>
+</html>
