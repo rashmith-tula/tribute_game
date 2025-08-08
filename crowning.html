@@ -295,7 +295,7 @@
 
     document.getElementById('unlockResults').addEventListener('click', ()=>{
       const pw = prompt('Enter admin password:');
-      if(pw === 'ByeRobert'){
+      if(pw === 'BicycleRocks'){
         unlocked = true;
         enterResultsMode();
         alert('Results unlocked.');
@@ -350,7 +350,7 @@
     // Clear all data
     clearAllBtn.addEventListener('click', async ()=>{
       const pw = prompt('Enter password to CLEAR ALL data:');
-      if(pw !== 'ByeRobert') return alert('Incorrect password.');
+      if(pw !== 'BicycleRocks') return alert('Incorrect password.');
       if(!confirm('This will permanently delete ALL titles and assignments. Continue?')) return;
 
       async function deleteCollection(name){
