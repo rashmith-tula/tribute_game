@@ -19,8 +19,7 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-	db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
-	// Optional: see the real error instead of generic CORS
+    db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
     firebase.firestore.setLogLevel('debug');
   </script>
   <style>
@@ -50,20 +49,23 @@
     .count { color:var(--text); font-weight:bold; }
 
     /* Instructions list */
-    .instructions { 
-      margin:0 0 14px 0; padding-left:18px; color:#374151;
-    }
+    .instructions { margin:0 0 14px 0; padding-left:18px; color:#374151; }
     .instructions li { margin:6px 0; }
 
     /* Spinner */
-    .spinner { 
-      width:20px; height:20px; border:3px solid #e5e7eb; border-top-color:var(--primary); border-radius:50%; 
-      animation: spin 1s linear infinite; display:none; 
+    .spinner {
+      width:20px; height:20px; border:3px solid #e5e7eb; border-top-color:var(--primary); border-radius:50%;
+      animation: spin 1s linear infinite; display:none;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Toast */
-    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 14px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); display: none; z-index: 9999; max-width: calc(100vw - 40px); text-align: center;}
+    /* Toast (bottom center) */
+    #toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #111827; color: #fff; padding: 10px 14px; border-radius: 8px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.2); display: none; z-index: 9999;
+      max-width: calc(100vw - 40px); text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -72,10 +74,15 @@
   </header>
   <main>
     <ul class="instructions">
-      <li>Just type a title that starts with <strong>Mx.</strong> or <strong>The</strong>.</li>
-      <li>E.g., <em>Mx.Perfect</em>, <em>The Smart Coder</em>.</li>
-      <li>Enter at least <strong>15</strong> unique titles.</li>
+      <li>This is in anonymous mode; the app doesn't know who you are.</li>
+      <li>Enter at least <strong>14</strong> unique titles that suit each of your 14 team members except yourself.</li>
+      <li>Just type a title that starts with <strong>Mx.</strong> or <strong>The</strong> and press 'Enter'. E.g., <em>Mx.Perfect</em>, <em>The Smart Coder</em>.</li>
+      <li>You can award more than one title to a member.</li>
+      <li>Please <strong>don't mention the names of who the title belongs to;</strong> you shall be doing that later.</li>
+      <br>
+      <strong>Sudhi, Robert, Tim, Rishabh, Aditya, Raunit, Mangesh, Rashmith, Prasanta, Haripriya, Kashika, Akanksha, Vivek, Nirmal, Kewal</strong>
     </ul>
+
     <div class="row">
       <input id="titleInput" type="text" placeholder="e.g., mx.perfect, the smart coder" />
       <button id="addBtn" class="btn-secondary">Add</button>
@@ -92,6 +99,12 @@
   <div id="toast">Saved!</div>
 
   <script>
+    const TEAM_MEMBERS = [
+      "Sudhi","Robert","Tim","Rishabh","Aditya","Raunit","Mangesh",
+      "Rashmith","Prasanta","Haripriya","Kashika","Akanksha","Vivek",
+      "Nirmal","Kewal"
+    ];
+
     const inputEl = document.getElementById('titleInput');
     const addBtn = document.getElementById('addBtn');
     const listEl = document.getElementById('titleList');
@@ -101,43 +114,43 @@
     const spinner = document.getElementById('spinner');
     const toast = document.getElementById('toast');
 
-    const titles = new Map(); // key: normalizedLower -> canonical text
+    // Map<dupKey, canonicalTitle>
+    const titles = new Map();
 
-    function cleanSpaces(str) {
-      return str.replace(/\s+/g, ' ').trim();
-    }
+    function cleanSpaces(str) { return str.replace(/\s+/g, ' ').trim(); }
+    function toTitleCaseWord(w) { return w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w; }
 
-    function toTitleCaseWord(w) {
-      if (!w) return w;
-      return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-    }
-
+    // Normalize user's raw input to canonical "Mx. Foo Bar" or "The Foo Bar"
     function normalizeUserTitle(raw) {
       if (!raw || !raw.trim()) return null;
       let s = raw.replace(/\s+/g, ' ').trim();
-
-      // capture prefix and remainder (case-insensitive), allow missing space after prefix
       const m = s.match(/^\s*(mx\.?|the)\s*(.*)$/i);
       if (!m) return null; // must start with mx. or the
-
       let prefix = m[1].toLowerCase();
       let rest = (m[2] || '').trim();
-
-      // standardize prefix
       if (prefix.startsWith('mx')) prefix = 'Mx.'; else prefix = 'The';
-
-      if (!rest) return null; // need some words after prefix
-
-      // collapse multiple spaces and enforce Title Case on rest
+      if (!rest) return null;
       rest = rest.replace(/\s+/g,' ').trim();
       const words = rest.split(' ').map(toTitleCaseWord);
-      const formatted = prefix + ' ' + words.join(' ');
-
-      // final cleanup
-      return cleanSpaces(formatted);
+      return cleanSpaces(prefix + ' ' + words.join(' '));
     }
 
-    function keyFor(title) { return title.toLowerCase(); }
+    // Duplicate key: strip all non-alphanumeric and lowercase
+    function duplicateKey(title) {
+      return title.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    // Check if any teammate name appears as a whole word in the title (after the prefix)
+    function findTeammateNameInTitle(canonicalTitle) {
+      const rest = canonicalTitle.replace(/^Mx\.\s+|^The\s+/, '');
+      const tokens = rest.split(/\s+/).map(w => w.replace(/[^A-Za-z]/g,'').toLowerCase()).filter(Boolean);
+      const names = TEAM_MEMBERS.map(n => n.toLowerCase());
+      for (const tok of tokens) {
+        const idx = names.indexOf(tok);
+        if (idx !== -1) return TEAM_MEMBERS[idx]; // return the offending name in original case
+      }
+      return null;
+    }
 
     function showError(msg) {
       errorBox.textContent = msg;
@@ -158,13 +171,13 @@
         li.className = 'chip';
         li.innerHTML = `<span>${t}</span> <button class="remove" title="Remove" aria-label="Remove">&times;</button>`;
         li.querySelector('.remove').onclick = () => {
-          titles.delete(keyFor(t));
+          titles.delete(duplicateKey(t));
           renderList();
         };
         listEl.appendChild(li);
       });
       countEl.textContent = titles.size;
-      submitBtn.disabled = titles.size < 15;
+      submitBtn.disabled = titles.size < 14;
     }
 
     function tryAddTitle() {
@@ -173,11 +186,21 @@
         showError("Title must start with 'Mx.' or 'The' and contain words after it.");
         return;
       }
-      const key = keyFor(normalized);
+
+      // Name validation
+      const badName = findTeammateNameInTitle(normalized);
+      if (badName) {
+        showError(`Please don't include teammate names (e.g., "${badName}") in the title.`);
+        return;
+      }
+
+      // Strong duplicate check (remove spaces/specials, lowercase)
+      const key = duplicateKey(normalized);
       if (titles.has(key)) {
         showError('Duplicate title not allowed.');
         return;
       }
+
       titles.set(key, normalized);
       inputEl.value = '';
       renderList();
@@ -193,13 +216,13 @@
       spinner.style.display = 'inline-block';
       try {
         const batch = db.batch();
-        for (const [k, text] of titles.entries()) {
-          const safeId = encodeURIComponent(k.replace(/[.#$/\[\]]/g, '_'));
+        for (const [dupKey, text] of titles.entries()) {
+          // Use the duplicateKey as the document ID so equivalent variants merge
+          const safeId = encodeURIComponent(dupKey);
           const ref = db.collection('titles').doc(safeId);
           batch.set(ref, { text, createdAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
         }
         await batch.commit();
-        // Clear UI state
         titles.clear();
         renderList();
         showToast('Titles submitted successfully!');
@@ -210,7 +233,7 @@
         spinner.style.display = 'none';
         addBtn.disabled = false;
         inputEl.disabled = false;
-        submitBtn.disabled = titles.size < 15;
+        submitBtn.disabled = titles.size < 14;
         inputEl.focus();
       }
     }
