@@ -4,278 +4,355 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Team Titles – Assign</title>
-  
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script>
-  // Firebase config (uses your existing project)
-  const firebaseConfig = {
-    apiKey: "AIzaSyBd3CpowxCtVvnqV5MlyN-t0jVEMvDTXgo",
-    authDomain: "tributegame-5b871.firebaseapp.com",
-    projectId: "tributegame-5b871",
-    storageBucket: "tributegame-5b871.appspot.com",
-    messagingSenderId: "757938343666",
-    appId: "1:757938343666:web:aa5f13826b0e360b0a8a6b",
-    measurementId: "G-5SDNERCN2D"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-</script>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBd3CpowxCtVvnqV5MlyN-t0jVEMvDTXgo",
+      authDomain: "tributegame-5b871.firebaseapp.com",
+      projectId: "tributegame-5b871",
+      storageBucket: "tributegame-5b871.appspot.com",
+      messagingSenderId: "757938343666",
+      appId: "1:757938343666:web:aa5f13826b0e360b0a8a6b",
+      measurementId: "G-5SDNERCN2D"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    /* reliability fix */
+    db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
+  </script>
 
   <style>
-    body { font-family: Arial, sans-serif; background:#f7fafc; margin:0; }
+    :root { --primary:#2563eb; --muted:#6b7280; --danger:#dc2626; --bg:#f7fafc; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background:var(--bg); margin:0; }
     header { background:#0f172a; color:#fff; padding:16px 24px; }
     h1 { margin:0; font-size:22px; }
-    main { max-width:1100px; margin:24px auto; background:#fff; padding:24px; border-radius:12px; box-shadow:0 4px 18px rgba(0,0,0,0.08);}
+    main { max-width:1200px; margin:24px auto; background:#fff; padding:24px; border-radius:12px; box-shadow:0 4px 18px rgba(0,0,0,0.08);}
+
+    /* instructions */
+    .instructions { margin: 0 0 12px 18px; color:#374151; }
+    .instructions li { margin: 6px 0; }
+
+    /* 75 / 25 layout that expands to full */
+    .layout { display:grid; grid-template-columns: 3fr 1fr; gap:16px; align-items:start; }
+    .layout.full { grid-template-columns: 1fr; } /* expand when sidebar hidden */
+
+    /* left: members grid */
     .grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
-    .member-box { border:2px dashed #cbd5e1; border-radius:12px; padding:10px; min-height:120px; background:#f8fafc; }
+    .member-box { border:2px dashed #cbd5e1; border-radius:12px; padding:10px; min-height:140px; background:#f8fafc; transition: border-color .2s, box-shadow .2s; }
     .member-header { font-weight:bold; margin-bottom:8px; color:#0f172a; }
     .dropzone { min-height:72px; display:flex; flex-wrap:wrap; gap:6px; }
     .chip { background:#e0f2fe; border:1px solid #7dd3fc; color:#0c4a6e; padding:6px 10px; border-radius:9999px; display:inline-flex; align-items:center; cursor:grab; }
     .chip[draggable="true"] { user-select:none; }
-    .pool { margin-top:20px; border-top:1px solid #e5e7eb; padding-top:16px; }
-    .pool-title { font-weight:bold; margin-bottom:8px; }
-    .pool-zone { min-height:60px; background:#f1f5f9; border:2px dashed #cbd5e1; border-radius:10px; padding:10px; display:flex; flex-wrap:wrap; gap:6px; }
+    .box-highlight { border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,0.15); }
+
+    /* right: titles list */
+    .sidebar { border-left:1px solid #e5e7eb; padding-left:12px; }
+    .sidebar h3 { margin:4px 0 10px; }
+    .pool-list { max-height:70vh; overflow:auto; border:2px dashed #cbd5e1; border-radius:10px; padding:10px; background:#f1f5f9; display:flex; flex-direction:column; gap:8px; }
+    .pool-row { display:block; } /* one row per title */
+
+    /* controls */
     .controls { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
     button { padding:10px 14px; border:none; border-radius:8px; cursor:pointer; }
-    .btn-primary { background:#2563eb; color:#fff; }
-    .btn-secondary { background:#6b7280; color:#fff; }
-    .btn-danger { background:#dc2626; color:#fff; }
-    .hidden { display:none; }
-    .result { margin-top:18px; background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding:12px; }
-    .title-count { display:flex; justify-content:space-between; padding:6px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; margin:4px 0; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-secondary { background:var(--muted); color:#fff; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .hidden { display:none !important; }
     .small { color:#334155; font-size:13px; }
+
+    .result-list { margin-top:8px; }
+    .title-count { display:flex; justify-content:space-between; padding:6px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; margin:4px 0; }
+
+    /* spinner + toast */
+    .spinner { width:20px; height:20px; border:3px solid #e5e7eb; border-top-color:var(--primary); border-radius:50%; animation: spin 1s linear infinite; display:none; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    #toast { position:fixed; right:20px; bottom:20px; background:#111827; color:#fff; padding:10px 14px; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.2); display:none; z-index:9999; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Title Assignment (Screen 2)</h1>
-  </header>
+  <header><h1>Title Assignment (Screen 2)</h1></header>
+
   <main>
-    <p class="small">Drag each title chip into a teammate’s box. Each box must have at least one title. Each title can be used only once (but you can move chips between boxes before submitting).</p>
+    <ul class="instructions">
+      <li>Drag a title from the right-side list into each teammate’s box.</li>
+      <li>Each box must have at least one title; each title can be used only once.</li>
+      <li>You can move titles between boxes before submitting.</li>
+    </ul>
 
-    <div id="members" class="grid"></div>
+    <div class="layout" id="layout">
+      <!-- Left: members -->
+      <section>
+        <div id="members" class="grid"></div>
 
-    <div class="pool">
-      <div class="pool-title">Available Titles (from all submissions, unique & sorted)</div>
-      <div id="pool" class="pool-zone dropzone"></div>
+        <div class="controls">
+          <button id="submitAssign" class="btn-primary">Submit Assignments</button>
+          <div id="spinner" class="spinner"></div>
+          <button id="unlockResults" class="btn-secondary">Unlock Results</button>
+          <button id="showNext" class="btn-secondary hidden">Next Member Result</button>
+          <button id="clearAll" class="btn-danger">Clear All</button>
+        </div>
+      </section>
+
+      <!-- Right: titles list -->
+      <aside id="sidebar" class="sidebar">
+        <h3>Available Titles</h3>
+        <div id="pool" class="pool-list"></div>
+      </aside>
     </div>
-
-    <div class="controls">
-      <button id="submitAssign" class="btn-primary">Submit Assignments</button>
-      <button id="unlockResults" class="btn-secondary">Unlock Results</button>
-      <button id="showNext" class="btn-secondary hidden">Display Result (Next Member)</button>
-      <button id="clearAll" class="btn-danger">Clear All</button>
-    </div>
-
-    <div id="resultBox" class="result hidden"></div>
   </main>
+
+  <div id="toast">Titles submitted</div>
 
   <script>
     const TEAM_MEMBERS = [
-      "Sudhi", "Robert", "Tim", "Rishabh", "Aditya", "Raunit", "Mangesh",
-      "Rashmith", "Prasanta", "Haripriya", "Kashika", "Akanksha", "Vivek",
-      "Nirmal", "Kewal"
+      "Sudhi","Robert","Tim","Rishabh","Aditya","Raunit","Mangesh",
+      "Rashmith","Prasanta","Haripriya","Kashika","Akanksha","Vivek",
+      "Nirmal","Kewal"
     ];
 
-    // Shuffle members
-    function shuffle(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
+    // drag state
+    let draggedEl = null;
+    let resultsMode = false;
+    let unlocked = false;
+    const revealed = new Set();
+    const memberBoxByName = new Map();
 
+    // elements
     const poolZone = document.getElementById('pool');
     const membersGrid = document.getElementById('members');
     const submitAssignBtn = document.getElementById('submitAssign');
     const unlockBtn = document.getElementById('unlockResults');
     const showNextBtn = document.getElementById('showNext');
-    const resultBox = document.getElementById('resultBox');
     const clearAllBtn = document.getElementById('clearAll');
+    const sidebar = document.getElementById('sidebar');
+    const spinner = document.getElementById('spinner');
+    const toast = document.getElementById('toast');
+    const layout = document.getElementById('layout');
 
-    let revealed = new Set();
-    let unlocked = false;
+    // utils
+    function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+    function showToast(msg='Titles submitted'){ toast.textContent=msg; toast.style.display='block'; setTimeout(()=>toast.style.display='none',2000); }
+    function setSpinning(on){ spinner.style.display = on ? 'inline-block' : 'none'; }
 
-    // Drag & Drop helpers
-    let draggedEl = null;
-
-    function createChip(text) {
+    // DnD
+    function createChip(text){
       const chip = document.createElement('span');
-      chip.className = 'chip';
+      chip.className = 'chip pool-row';
       chip.textContent = text;
       chip.draggable = true;
-      chip.addEventListener('dragstart', (e) => {
-        draggedEl = chip;
-        e.dataTransfer.setData('text/plain', text);
-      });
-      chip.addEventListener('dragend', () => { draggedEl = null; });
+      chip.addEventListener('dragstart', (e)=>{ if(resultsMode) return; draggedEl=chip; e.dataTransfer.setData('text/plain', text); });
+      chip.addEventListener('dragend', ()=>{ draggedEl=null; });
       return chip;
     }
-
-    function makeDropzone(zone) {
-      zone.addEventListener('dragover', (e) => e.preventDefault());
-      zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        if (!draggedEl) return;
-        zone.appendChild(draggedEl);
-      });
+    function makeDropzone(zone){
+      zone.addEventListener('dragover', (e)=>{ if(resultsMode) return; e.preventDefault(); });
+      zone.addEventListener('drop', (e)=>{ if(resultsMode) return; e.preventDefault(); if(!draggedEl) return; zone.appendChild(draggedEl); });
     }
 
-    function renderMembers() {
+    function renderMembers(){
       membersGrid.innerHTML = '';
-      shuffle([...TEAM_MEMBERS]).forEach((name) => {
+      memberBoxByName.clear();
+      shuffle([...TEAM_MEMBERS]).forEach(name=>{
         const box = document.createElement('div');
         box.className = 'member-box';
+        box.dataset.member = name;
+
         const header = document.createElement('div');
         header.className = 'member-header';
         header.textContent = name;
+
         const dz = document.createElement('div');
         dz.className = 'dropzone';
         makeDropzone(dz);
+
+        // result container (hidden until revealed)
+        const resultWrap = document.createElement('div');
+        resultWrap.className = 'result-list hidden';
+
         box.appendChild(header);
         box.appendChild(dz);
+        box.appendChild(resultWrap);
+
         membersGrid.appendChild(box);
+        memberBoxByName.set(name, box);
       });
-      makeDropzone(poolZone); // allow dropping back to pool
+      makeDropzone(poolZone); // allow returning chips to list
     }
 
-    async function loadTitles() {
+    async function loadTitles(){
       const snap = await db.collection('titles').get();
-      const map = new Map(); // lower -> canonical
-      snap.forEach(doc => {
-        const t = (doc.data().text || '').trim();
-        if (!t) return;
+      const map = new Map();
+      snap.forEach(doc=>{
+        const t = (doc.data().text||'').trim();
+        if(!t) return;
         const key = t.toLowerCase();
-        if (!map.has(key)) map.set(key, t);
+        if(!map.has(key)) map.set(key, t);
       });
-      // Sort by canonical text
-      const arr = Array.from(map.values()).sort((a,b) => a.localeCompare(b));
+      const arr = Array.from(map.values()).sort((a,b)=>a.localeCompare(b));
       poolZone.innerHTML = '';
-      arr.forEach(t => poolZone.appendChild(createChip(t)));
+      arr.forEach(t=> poolZone.appendChild(createChip(t)));
     }
 
-    function getAssignments() {
-      // Return map member -> [titles]
+    function getAssignments(){
       const boxes = membersGrid.querySelectorAll('.member-box');
       const res = new Map();
-      boxes.forEach(box => {
-        const name = box.querySelector('.member-header').textContent;
-        const titles = Array.from(box.querySelectorAll('.chip')).map(c => c.textContent);
+      boxes.forEach(box=>{
+        const name = box.dataset.member;
+        const titles = Array.from(box.querySelectorAll('.dropzone .chip')).map(c=>c.textContent);
         res.set(name, titles);
       });
       return res;
     }
 
-    function validateBeforeSubmit() {
+    function validateBeforeSubmit(){
       const assignMap = getAssignments();
-      for (const [member, titles] of assignMap.entries()) {
-        if (!titles.length) return false;
+      for(const [member,titles] of assignMap.entries()){
+        if(!titles.length) return false;
       }
       return true;
     }
 
-    submitAssignBtn.addEventListener('click', async () => {
-      if (!validateBeforeSubmit()) {
+    submitAssignBtn.addEventListener('click', async ()=>{
+      if(!validateBeforeSubmit()){
         alert('Each member box must have at least one title before submitting.');
         return;
       }
+      setSpinning(true);
+      submitAssignBtn.disabled = true;
+
       const assignMap = getAssignments();
-      try {
+      try{
         const batch = db.batch();
         const now = new Date();
-        for (const [member, titles] of assignMap.entries()) {
-          titles.forEach(title => {
+        for(const [member,titles] of assignMap.entries()){
+          titles.forEach(title=>{
             const ref = db.collection('assignments').doc();
             batch.set(ref, { member, title, submittedAt: now });
           });
         }
         await batch.commit();
-        alert('Assignments submitted!');
-      } catch (err) {
+
+        // reset UI
+        showToast('Titles submitted');
+        renderMembers();
+        await loadTitles();
+      }catch(err){
         console.error(err);
         alert('Error submitting assignments: ' + err.message);
+      }finally{
+        setSpinning(false);
+        submitAssignBtn.disabled = false;
       }
     });
 
-    unlockBtn.addEventListener('click', () => {
+    // Results mode
+    function enterResultsMode(){
+      resultsMode = true;
+      // hide sidebar + unlock button + submit (keep Clear All)
+      sidebar.classList.add('hidden');
+      layout.classList.add('full');      // expand left to full width
+      unlockBtn.classList.add('hidden');
+      submitAssignBtn.classList.add('hidden');
+      showNextBtn.classList.remove('hidden');
+
+      // freeze dragging
+      membersGrid.querySelectorAll('.chip').forEach(ch=> ch.draggable=false);
+    }
+
+    document.getElementById('unlockResults').addEventListener('click', ()=>{
       const pw = prompt('Enter admin password:');
-      if (pw === 'ByeRobert') {
+      if(pw === 'ByeRobert'){
         unlocked = true;
-        showNextBtn.classList.remove('hidden');
+        enterResultsMode();
         alert('Results unlocked.');
-      } else {
+      }else{
         alert('Incorrect password.');
       }
     });
 
-    async function revealOneRandomMember() {
-      if (!unlocked) return alert('Unlock results first.');
-      if (revealed.size === TEAM_MEMBERS.length) {
-        resultBox.classList.remove('hidden');
-        resultBox.innerHTML = '<strong>All members revealed.</strong>';
+    async function revealOneRandomMember(){
+      if(!unlocked) return alert('Unlock results first.');
+      if(revealed.size === TEAM_MEMBERS.length){
+        showNextBtn.disabled = true;
+        showNextBtn.textContent = 'All results revealed';
         return;
       }
-      // Pick a random unrevealed
-      const remaining = TEAM_MEMBERS.filter(n => !revealed.has(n));
-      const pick = remaining[Math.floor(Math.random() * remaining.length)];
 
-      // Fetch assignments for that member
-      const q = await db.collection('assignments').where('member', '==', pick).get();
+      const remaining = TEAM_MEMBERS.filter(n => !revealed.has(n));
+      const pick = remaining[Math.floor(Math.random()*remaining.length)];
+
+      const q = await db.collection('assignments').where('member','==',pick).get();
       const counts = new Map();
-      q.forEach(doc => {
-        const t = doc.data().title || '';
-        const key = t.trim();
-        if (!key) return;
-        counts.set(key, (counts.get(key) || 0) + 1);
+      q.forEach(doc=>{
+        const t = (doc.data().title||'').trim();
+        if(!t) return;
+        counts.set(t, (counts.get(t)||0)+1);
       });
 
-      // Render
-      const rows = Array.from(counts.entries())
-        .sort((a,b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .map(([title, cnt]) => `<div class="title-count"><span>${title}</span><span>x${cnt}</span></div>`)
-        .join('') || '<div class="small">No assignments yet.</div>';
+      // remove highlight from all
+      membersGrid.querySelectorAll('.member-box').forEach(b=> b.classList.remove('box-highlight'));
 
-      resultBox.classList.remove('hidden');
-      resultBox.innerHTML = `
-        <h3>Results for <em>${pick}</em></h3>
-        ${rows}
-        <div class="small">Click "Display Result (Next Member)" again to reveal another member.</div>
-      `;
+      // render into that member's box
+      const box = memberBoxByName.get(pick);
+      if(box){
+        const resWrap = box.querySelector('.result-list');
+        const rows = Array.from(counts.entries())
+          .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]))
+          .map(([title,cnt])=> `<div class="title-count"><span>${title}</span><span>x${cnt}</span></div>`)
+          .join('') || '<div class="small">No assignments yet.</div>';
+
+        resWrap.innerHTML = `<h4>Assigned Titles</h4>${rows}`;
+        resWrap.classList.remove('hidden');
+        box.classList.add('box-highlight');
+      }
 
       revealed.add(pick);
-    }
 
+      if(revealed.size === TEAM_MEMBERS.length){
+        showNextBtn.disabled = true;
+        showNextBtn.textContent = 'All results revealed';
+      }
+    }
     showNextBtn.addEventListener('click', revealOneRandomMember);
 
-    clearAllBtn.addEventListener('click', async () => {
+    // Clear all data
+    clearAllBtn.addEventListener('click', async ()=>{
       const pw = prompt('Enter password to CLEAR ALL data:');
-      if (pw !== 'ByeRobert') return alert('Incorrect password.');
+      if(pw !== 'ByeRobert') return alert('Incorrect password.');
+      if(!confirm('This will permanently delete ALL titles and assignments. Continue?')) return;
 
-      if (!confirm('This will permanently delete ALL titles and assignments. Continue?')) return;
-
-      async function deleteCollection(name) {
+      async function deleteCollection(name){
         const snap = await db.collection(name).get();
         const batch = db.batch();
-        let count = 0;
-        snap.forEach(doc => { batch.delete(doc.ref); count++; });
-        if (count > 0) await batch.commit();
+        let count=0;
+        snap.forEach(doc=>{ batch.delete(doc.ref); count++; });
+        if(count>0) await batch.commit();
         return count;
       }
 
-      try {
-        let totalDeleted = 0;
-        totalDeleted += await deleteCollection('assignments');
-        totalDeleted += await deleteCollection('titles');
-        alert('All data purged. Deleted docs: ' + totalDeleted);
-        // Reload UI
-        await loadTitles();
-        renderMembers();
+      try{
+        let total = 0;
+        total += await deleteCollection('assignments');
+        total += await deleteCollection('titles');
+        alert('All data purged. Deleted docs: '+total);
+
+        // Reset UI state
         revealed.clear();
-        resultBox.classList.add('hidden');
-        resultBox.innerHTML = '';
-      } catch (err) {
+        showNextBtn.disabled = false;
+        showNextBtn.textContent = 'Next Member Result';
+        sidebar.classList.remove('hidden');
+        layout.classList.remove('full');  // restore 75/25
+        unlockBtn.classList.remove('hidden');
+        submitAssignBtn.classList.remove('hidden');
+        resultsMode = false;
+
+        renderMembers();
+        await loadTitles();
+      }catch(err){
         console.error(err);
         alert('Error clearing data: ' + err.message);
       }
