@@ -63,16 +63,12 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* Toast */
-    #toast { 
-      position: fixed; right:20px; bottom:20px; background:#111827; color:#fff; 
-      padding:10px 14px; border-radius:8px; box-shadow:0 6px 16px rgba(0,0,0,0.2); 
-      display:none; z-index:9999;
-    }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 14px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); display: none; z-index: 9999; max-width: calc(100vw - 40px); text-align: center;}
   </style>
 </head>
 <body>
   <header>
-    <h1>Title Collector (Screen 1)</h1>
+    <h1>Title Collector</h1>
   </header>
   <main>
     <ul class="instructions">
