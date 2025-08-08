@@ -79,9 +79,9 @@
 
   <main>
     <ul class="instructions">
-      <li>Drag a title from the right-side list into each teammate’s box.</li>
-      <li>Each box must have at least one title; each title can be used only once.</li>
-      <li>You can move titles between boxes before submitting.</li>
+      <li>Choose a crown (title) on the right and give it to the most fitting teammate.</li>
+      <li>Each teammate must have at least one crown. You can skip yourself.</li>
+      <li>After crowning all, click on 'Submit'.</li>
     </ul>
 
     <div class="layout" id="layout">
@@ -90,7 +90,7 @@
         <div id="members" class="grid"></div>
 
         <div class="controls">
-          <button id="submitAssign" class="btn-primary">Submit Assignments</button>
+          <button id="submitAssign" class="btn-primary">Submit</button>
           <div id="spinner" class="spinner"></div>
           <button id="unlockResults" class="btn-secondary">Unlock Results</button>
           <button id="showNext" class="btn-secondary hidden">Next Member Result</button>
@@ -231,17 +231,25 @@
       return res;
     }
 
-    function validateBeforeSubmit(){
+    function validateBeforeSubmit() {
       const assignMap = getAssignments();
-      for(const [member,titles] of assignMap.entries()){
-        if(!titles.length) return false;
+      const total = TEAM_MEMBERS.length;
+      const empty = [];
+    
+      for (const [member, titles] of assignMap.entries()) {
+        if (!titles.length) empty.push(member);
       }
-      return true;
+    
+      // allow at most one empty box
+      return { ok: empty.length <= 1, empty };
     }
 
     submitAssignBtn.addEventListener('click', async ()=>{
-      if(!validateBeforeSubmit()){
-        alert('Each member box must have at least one title before submitting.');
+      const check = validateBeforeSubmit();
+      if (!check.ok) {
+        const preview = check.empty.slice(0, 4).join(', ');
+        const more = check.empty.length > 4 ? ` +${check.empty.length - 4} more` : '';
+        alert(`Please crown at least ${TEAM_MEMBERS.length - 1} teammates (you can skip yourself). Missing: ${preview}${more}`);
         return;
       }
       setSpinning(true);
