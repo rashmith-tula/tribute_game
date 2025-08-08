@@ -20,13 +20,13 @@
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    /* reliability fix */
     db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
   </script>
 
   <style>
     :root { --primary:#2563eb; --muted:#6b7280; --danger:#dc2626; --bg:#f7fafc; }
     * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body { font-family: Arial, sans-serif; background:var(--bg); margin:0; }
     header { background:#0f172a; color:#fff; padding:16px 24px; }
     h1 { margin:0; font-size:22px; }
@@ -52,7 +52,7 @@
     /* right: titles list */
     .sidebar { border-left:1px solid #e5e7eb; padding-left:12px; }
     .sidebar h3 { margin:4px 0 10px; }
-    .pool-list { max-height:70vh; overflow:auto; border:2px dashed #cbd5e1; border-radius:10px; padding:10px; background:#f1f5f9; display:flex; flex-direction:column; gap:8px; }
+    .pool-list { /* dynamic height set by JS */ overflow:auto; border:2px dashed #cbd5e1; border-radius:10px; padding:10px; background:#f1f5f9; display:flex; flex-direction:column; gap:8px; }
     .pool-row { display:block; } /* one row per title */
 
     /* controls */
@@ -138,6 +138,16 @@
     function showToast(msg='Titles submitted'){ toast.textContent=msg; toast.style.display='block'; setTimeout(()=>toast.style.display='none',2000); }
     function setSpinning(on){ spinner.style.display = on ? 'inline-block' : 'none'; }
 
+    // Dynamically size the right list to the bottom of the viewport
+    function sizeSidebar(){
+      if(!poolZone || poolZone.offsetParent === null) return; // hidden
+      const rect = poolZone.getBoundingClientRect();
+      // 16px breathing room at bottom
+      const maxH = Math.max(120, Math.floor(window.innerHeight - rect.top - 16));
+      poolZone.style.maxHeight = maxH + 'px';
+    }
+    window.addEventListener('resize', sizeSidebar);
+
     // DnD
     function createChip(text){
       const chip = document.createElement('span');
@@ -169,7 +179,6 @@
         dz.className = 'dropzone';
         makeDropzone(dz);
 
-        // result container (hidden until revealed)
         const resultWrap = document.createElement('div');
         resultWrap.className = 'result-list hidden';
 
@@ -180,7 +189,8 @@
         membersGrid.appendChild(box);
         memberBoxByName.set(name, box);
       });
-      makeDropzone(poolZone); // allow returning chips to list
+      makeDropzone(poolZone);
+      sizeSidebar();
     }
 
     async function loadTitles(){
@@ -195,6 +205,7 @@
       const arr = Array.from(map.values()).sort((a,b)=>a.localeCompare(b));
       poolZone.innerHTML = '';
       arr.forEach(t=> poolZone.appendChild(createChip(t)));
+      sizeSidebar();
     }
 
     function getAssignments(){
@@ -236,7 +247,6 @@
         }
         await batch.commit();
 
-        // reset UI
         showToast('Titles submitted');
         renderMembers();
         await loadTitles();
@@ -252,15 +262,14 @@
     // Results mode
     function enterResultsMode(){
       resultsMode = true;
-      // hide sidebar + unlock button + submit (keep Clear All)
       sidebar.classList.add('hidden');
-      layout.classList.add('full');      // expand left to full width
+      layout.classList.add('full');  // expand left to full width
       unlockBtn.classList.add('hidden');
       submitAssignBtn.classList.add('hidden');
       showNextBtn.classList.remove('hidden');
 
-      // freeze dragging
       membersGrid.querySelectorAll('.chip').forEach(ch=> ch.draggable=false);
+      sizeSidebar(); // harmless if sidebar hidden
     }
 
     document.getElementById('unlockResults').addEventListener('click', ()=>{
@@ -293,10 +302,8 @@
         counts.set(t, (counts.get(t)||0)+1);
       });
 
-      // remove highlight from all
       membersGrid.querySelectorAll('.member-box').forEach(b=> b.classList.remove('box-highlight'));
 
-      // render into that member's box
       const box = memberBoxByName.get(pick);
       if(box){
         const resWrap = box.querySelector('.result-list');
@@ -340,12 +347,11 @@
         total += await deleteCollection('titles');
         alert('All data purged. Deleted docs: '+total);
 
-        // Reset UI state
         revealed.clear();
         showNextBtn.disabled = false;
         showNextBtn.textContent = 'Next Member Result';
         sidebar.classList.remove('hidden');
-        layout.classList.remove('full');  // restore 75/25
+        layout.classList.remove('full');
         unlockBtn.classList.remove('hidden');
         submitAssignBtn.classList.remove('hidden');
         resultsMode = false;
