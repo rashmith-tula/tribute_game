@@ -176,6 +176,17 @@
       "Rashmith","Prasanta","Haripriya","Kashika","Akanksha","Vivek",
       "Nirmal","Kewal"
     ];
+	
+	// Full signers list (for the footer)
+	const SIGNERS_FULL = [
+	  "Sudhi Balan", "Robert Russell", "Timothy Wake", "Vivek Pandit",
+	  "Prasanta Midya", "Rashmith Tula", "Nirmal Balasundaram", "Aditya Shinde",
+	  "Mangesh Diyewar", "Haripriya", "Kashika Parmar", "Akanksha Shinde",
+	  "Rishabh Gupta", "Raunit Kohli", "Kewal Pithadia"
+	];
+
+	// escape for safe regex building
+	function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
     // drag state
     let draggedEl = null;
@@ -431,6 +442,11 @@
         const display = title.replace(/^Mx\./, honorific);
         return { display, count: n };
       });
+	  
+	  // remove recipient's full name by partial first-name match
+	  const first = (member || '').split(/\s+/)[0]; // e.g., "Tim" from "Tim"
+	  const rx = new RegExp('\\b' + escapeRegExp(first) + '\\b', 'i');
+	  const footerNames = SIGNERS_FULL.filter(n => !rx.test(n));
 
       // Build off-screen card node
       const card = document.createElement('div');
@@ -451,7 +467,7 @@
         </div>
         <div class="card-footer">
 		  With love from <strong>Team Bicycle</strong>,<br><br>
-		  Sudhi Balan, Robert Russell, Timothy Wake, Vivek Pandit, Prasanta Midya, Nirmal Balasundaram, Aditya Shinde, Mangesh Diyewar, Haripriya, Kashika Parmar, Rashmith Tula, Akanksha Shinde, Rishabh Gupta, Raunit Kohli, Kewal Pithadia.
+		  ${footerNames.join(', ')}.
 		</div>
       `;
       document.body.appendChild(card);
