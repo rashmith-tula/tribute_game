@@ -101,9 +101,13 @@
       position: fixed; left: -9999px; top: -9999px; /* off-screen */
       font-family: "Segoe UI", Roboto, Arial, sans-serif;
     }
-    .card-header {
-      display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;
-    }
+    .card-header{
+	  display:flex; align-items:center; gap:14px; margin-bottom:10px;
+	}
+	.card-logo{ height:48px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+	.grad{ flex:1; height:8px; border-radius:9999px; }
+	.grad-left{  background: linear-gradient(90deg, #7c3aed, #ec4899); }
+	.grad-right{ background: linear-gradient(270deg, #7c3aed, #ec4899); }
     .card-logo { height: 40px; }
     .card-title {
       font-size: 28px; font-weight: 800;
@@ -433,9 +437,11 @@
       card.className = 'download-card';
       card.innerHTML = `
         <div class="card-header">
-          <div class="card-title">Crown & Kudos</div>
-          <img src="${LOGO_URL}" class="card-logo" alt="Rocket Software logo">
-        </div>
+		  <div class="grad grad-left"></div>
+		  <img src="${LOGO_URL}" class="card-logo" alt="Rocket Software logo">
+		  <div class="grad grad-right"></div>
+		</div>
+		<div class="card-title">Crown & Kudos</div>
         <div class="card-sub">
 		  <strong>${member}</strong>, we proudly recognize you with the following crowns (titles) — a celebration of your impact and spirit.<br>
 		  We’re proud to work with you. Keep up the great work.
@@ -444,8 +450,8 @@
           ${entries.map(e => `<span class="card-pill">${e.display}${e.count>1?` ×${e.count}`:''}</span>`).join('<br>')}
         </div>
         <div class="card-footer">
-		  With love from <strong>Team Bicycle</strong>,<br>
-		  Sudhi Balan, Robert Russell, Timothy Wake, Vivek Pandit, Prasanta Midya, Rashmith Tula, Nirmal Balasundaram, Aditya Shinde, Mangesh Diyewar, Haripriya, Kashika Parmar, Akanksha Shinde, Rishabh Gupta, Raunit Kohli, Kewal Pithadia.
+		  With love from <strong>Team Bicycle</strong>,<br><br>
+		  Sudhi Balan, Robert Russell, Timothy Wake, Vivek Pandit, Prasanta Midya, Nirmal Balasundaram, Aditya Shinde, Mangesh Diyewar, Haripriya, Kashika Parmar, Rashmith Tula, Akanksha Shinde, Rishabh Gupta, Raunit Kohli, Kewal Pithadia.
 		</div>
       `;
       document.body.appendChild(card);
