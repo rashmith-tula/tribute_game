@@ -144,7 +144,7 @@
 	  background: linear-gradient(90deg,#7c3aed,#ec4899);
 	  -webkit-background-clip: text;
 	  background-clip: text;
-	  color: transparent;
+	  color: white;
 	}
 
 	/* recipient line + blurb */
@@ -202,8 +202,17 @@
 	  line-height: 1.5;
 	  text-align:center;
 	  margin-top: 14px;
-	  padding-top: 12px;
-	  border-top: 1px dashed #cbd5e1;
+	  padding-top: 0;           /* no extra top padding */
+	  border: 0;                /* remove the old dashed border */
+	}
+
+	/* the gradient "border" bar */
+	.card-footer .gradient-bar{
+	  height: 4px;              /* thickness you wanted */
+	  width: 100%;
+	  background: linear-gradient(90deg,#7c3aed,#ec4899);
+	  border-radius: 9999px;    /* rounded ends */
+	  margin: 0 0 12px 0;       /* space below the bar */
 	}
   </style>
 </head>
@@ -541,6 +550,7 @@
 			  ${entries.map(e => `<span class="card-pill">${e.display}${e.count>1?` ×${e.count}`:''}</span>`).join('<br>')}
 			</div>
 			<div class="card-footer">
+			  <div class="gradient-bar"></div>
 			  With love from <strong>Team Bicycle</strong>,<br><br>
 			  ${footerNames.join(', ')}.
 			</div>
