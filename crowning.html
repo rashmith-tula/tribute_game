@@ -8,6 +8,10 @@
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- html2canvas for image download -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
   <script>
     const firebaseConfig = {
       apiKey: "AIzaSyBd3CpowxCtVvnqV5MlyN-t0jVEMvDTXgo",
@@ -21,6 +25,9 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
+
+    // If your logo has a different name/path, change this:
+    const LOGO_URL = 'rocket_logo.png';
   </script>
 
   <style>
@@ -46,7 +53,6 @@
     .member-header { font-weight:bold; margin-bottom:8px; color:#0f172a; }
     .dropzone { min-height:72px; display:flex; flex-wrap:wrap; gap:6px; align-items: flex-start; }
     .chip { background:#e0f2fe; border:1px solid #7dd3fc; color:#0c4a6e; padding:6px 10px; border-radius:9999px; display:inline-flex; align-items:center; cursor:grab; }
-    /* Ensure chips inside member boxes never expand full width */
     .dropzone .chip { display:inline-flex !important; flex: 0 0 auto; line-height: 1.2; padding: 6px 10px; }
     .box-highlight { border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,0.15); }
 
@@ -66,12 +72,65 @@
     .small { color:#334155; font-size:13px; }
 
     .result-list { margin-top:8px; }
-    .title-count { display:flex; justify-content:space-between; padding:6px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; margin:4px 0; }
+    .title-count { display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; margin:6px 0; cursor:grab; }
+    .title-count.dragging { opacity: .6; }
+    .title-count .ttext::before {
+      content: "👑";
+      margin-right: 6px;
+    }
+    .result-items { margin-top:6px; }
+
+    .download-row { margin-top:10px; display:flex; gap:10px; align-items:center; }
+    .download-row select { padding:6px 8px; border:1px solid #cbd5e1; border-radius:8px; }
+    .download-row .btn-primary { padding:8px 12px; }
 
     /* spinner + toast */
     .spinner { width:20px; height:20px; border:3px solid #e5e7eb; border-top-color:var(--primary); border-radius:50%; animation: spin 1s linear infinite; display:none; }
     @keyframes spin { to { transform:rotate(360deg); } }
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 14px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); display: none; z-index: 9999; max-width: calc(100vw - 40px); text-align: center;}
+
+    /* --- Download card styles (rendered off-screen) --- */
+    .download-card {
+      width: 1000px;
+      padding: 28px;
+      background: linear-gradient(135deg, #fdf2ff 0%, #f0f9ff 100%);
+      border-radius: 20px;
+      border: 3px solid #a78bfa; /* violet */
+      box-shadow: 0 12px 28px rgba(0,0,0,0.15);
+      color: #111827;
+      position: fixed; left: -9999px; top: -9999px; /* off-screen */
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    .card-header{
+	  display:flex; align-items:center; gap:14px; margin-bottom:10px;
+	}
+	.card-logo{ height:48px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
+	.grad{ flex:1; height:8px; border-radius:9999px; }
+	.grad-left{  background: linear-gradient(90deg, #7c3aed, #ec4899); }
+	.grad-right{ background: linear-gradient(270deg, #7c3aed, #ec4899); }
+    .card-logo { height: 40px; }
+    .card-title {
+      font-size: 28px; font-weight: 800;
+      background: linear-gradient(90deg,#7c3aed,#ec4899);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .card-sub { color:#374151; margin: 6px 0 16px; }
+    .card-list { margin: 14px 0 18px; display:block; }
+    .card-pill {
+	  display: inline-block; margin-bottom: 8px; 
+      background: #fff; border:1px solid #e5e7eb; border-radius: 9999px; padding: 8px 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05); font-weight: 600;
+    }
+    .card-pill::before {
+      content: "👑";
+      margin-right: 8px;
+      font-size: 0.95em;
+      line-height: 1;
+    }
+    .card-footer {
+      margin-top: 14px; font-size: 14px; color:#374151;
+      padding-top:10px; border-top: 1px dashed #cbd5e1;
+    }
   </style>
 </head>
 <body>
@@ -80,11 +139,11 @@
   <main>
     <ul class="instructions">
       <li>This is in anonymous mode; the app doesn't know who you are.</li>
-	  <li>The <strong>crowns list includes all crowns submitted by the entire team</strong>.</li>
-	  <li>You can <strong>pick any crown</strong> from the list, <strong>not just the ones you added</strong>.</li>
+      <li>The <strong>crowns list includes all crowns submitted by the entire team</strong>.</li>
+      <li>You can <strong>pick any crown</strong> from the list, <strong>not just the ones you added</strong>.</li>
       <li>Pick a crown and crown the teammate it fits best (drag and drop).</li>
-      <li>Each teammate must have at least one crown. You can skip yourself.</li>
-      <li>After crowning all, click on 'Submit'.</li>
+      <li>Crown at least 14 of 15 teammates (you may skip yourself).</li>
+      <li>After crowning all, click on <strong>Submit</strong>.</li>
     </ul>
 
     <div class="layout" id="layout">
@@ -101,7 +160,7 @@
         </div>
       </section>
 
-      <!-- Right: titles list -->
+      <!-- Right: crowns list -->
       <aside id="sidebar" class="sidebar">
         <h3>Available Crowns</h3>
         <div id="pool" class="pool-list" style="min-height:720px; max-height: 92vh"></div>
@@ -117,6 +176,17 @@
       "Rashmith","Prasanta","Haripriya","Kashika","Akanksha","Vivek",
       "Nirmal","Kewal"
     ];
+	
+	// Full signers list (for the footer)
+	const SIGNERS_FULL = [
+	  "Sudhi Balan", "Robert Russell", "Timothy Wake", "Vivek Pandit",
+	  "Prasanta Midya", "Nirmal Balasundaram", "Aditya Shinde",
+	  "Mangesh Diyewar", "Haripriya", "Kashika Parmar", "Rashmith Tula", "Akanksha Shinde",
+	  "Rishabh Gupta", "Raunit Kohli", "Kewal Pithadia"
+	];
+
+	// escape for safe regex building
+	function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
     // drag state
     let draggedEl = null;
@@ -142,19 +212,10 @@
     function showToast(msg='Titles submitted'){ toast.textContent=msg; toast.style.display='block'; setTimeout(()=>toast.style.display='none',2000); }
     function setSpinning(on){ spinner.style.display = on ? 'inline-block' : 'none'; }
 
-    // Dynamically size the right list to bottom of viewport
-    function sizeSidebar(){
-      if(!poolZone || poolZone.offsetParent === null) return; // hidden
-      const rect = poolZone.getBoundingClientRect();
-      const maxH = Math.max(120, Math.floor(window.innerHeight - rect.top - 16));
-      poolZone.style.maxHeight = maxH + 'px';
-    }
-    window.addEventListener('resize', sizeSidebar);
-
-    // DnD
+    // DnD (pool and member boxes)
     function createChip(text){
       const chip = document.createElement('span');
-      chip.className = 'chip pool-row';          // block in sidebar
+      chip.className = 'chip pool-row';
       chip.textContent = text;
       chip.draggable = true;
       chip.addEventListener('dragstart', (e)=>{ if(resultsMode) return; draggedEl=chip; e.dataTransfer.setData('text/plain', text); });
@@ -168,13 +229,7 @@
         e.preventDefault();
         if(!draggedEl) return;
         zone.appendChild(draggedEl);
-
-        // >>> FIX: chips in member boxes shouldn't be full-width
-        if(zone === poolZone){
-          draggedEl.classList.add('pool-row');   // one-per-row in sidebar
-        }else{
-          draggedEl.classList.remove('pool-row'); // inline pills in dropzones
-        }
+        if(zone === poolZone){ draggedEl.classList.add('pool-row'); } else { draggedEl.classList.remove('pool-row'); }
       });
     }
 
@@ -205,7 +260,6 @@
         memberBoxByName.set(name, box);
       });
       makeDropzone(poolZone);
-      sizeSidebar();
     }
 
     async function loadTitles(){
@@ -220,7 +274,6 @@
       const arr = Array.from(map.values()).sort((a,b)=>a.localeCompare(b));
       poolZone.innerHTML = '';
       arr.forEach(t=> poolZone.appendChild(createChip(t)));
-      sizeSidebar();
     }
 
     function getAssignments(){
@@ -236,14 +289,8 @@
 
     function validateBeforeSubmit() {
       const assignMap = getAssignments();
-      const total = TEAM_MEMBERS.length;
       const empty = [];
-    
-      for (const [member, titles] of assignMap.entries()) {
-        if (!titles.length) empty.push(member);
-      }
-    
-      // allow at most one empty box
+      for (const [member, titles] of assignMap.entries()) { if (!titles.length) empty.push(member); }
       return { ok: empty.length <= 1, empty };
     }
 
@@ -269,7 +316,6 @@
           });
         }
         await batch.commit();
-
         showToast('Titles submitted');
         renderMembers();
         await loadTitles();
@@ -282,7 +328,7 @@
       }
     });
 
-    // Results mode
+    // ------- Results mode + Reorder + Download -------
     function enterResultsMode(){
       resultsMode = true;
       sidebar.classList.add('hidden');
@@ -290,9 +336,7 @@
       unlockBtn.classList.add('hidden');
       submitAssignBtn.classList.add('hidden');
       showNextBtn.classList.remove('hidden');
-
       membersGrid.querySelectorAll('.chip').forEach(ch=> ch.draggable=false);
-      sizeSidebar();
     }
 
     document.getElementById('unlockResults').addEventListener('click', ()=>{
@@ -305,6 +349,22 @@
         alert('Incorrect password.');
       }
     });
+
+    function enableReorder(listEl){
+      let dragging = null;
+      listEl.querySelectorAll('.title-count').forEach(item=>{
+        item.draggable = true;
+        item.addEventListener('dragstart', ()=>{ dragging=item; item.classList.add('dragging'); });
+        item.addEventListener('dragend', ()=>{ item.classList.remove('dragging'); dragging=null; });
+      });
+      listEl.addEventListener('dragover', (e)=>{
+        e.preventDefault();
+        if(!dragging) return;
+        const siblings = Array.from(listEl.querySelectorAll('.title-count:not(.dragging)'));
+        const after = siblings.find(el => e.clientY <= el.getBoundingClientRect().top + el.offsetHeight/2);
+        if(after) listEl.insertBefore(dragging, after); else listEl.appendChild(dragging);
+      });
+    }
 
     async function revealOneRandomMember(){
       if(!unlocked) return alert('Unlock results first.');
@@ -330,14 +390,34 @@
       const box = memberBoxByName.get(pick);
       if(box){
         const resWrap = box.querySelector('.result-list');
-        const rows = Array.from(counts.entries())
+        const itemsHTML = Array.from(counts.entries())
           .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]))
-          .map(([title,cnt])=> `<div class="title-count"><span>${title}</span><span>x${cnt}</span></div>`)
-          .join('') || '<div class="small">No crowns yet.</div>';
+          .map(([title,cnt])=> `<div class="title-count"><span class="ttext">${title}</span><span class="tcnt">x${cnt}</span></div>`)
+          .join('');
 
-        resWrap.innerHTML = `<h4>Crowns</h4>${rows}`;
+        resWrap.innerHTML = `
+          <h4>Crowns</h4>
+          <div class="result-items">${itemsHTML || '<div class="small">No crowns yet.</div>'}</div>
+          <div class="download-row">
+            <label for="hon-${pick}">Prefix:</label>
+            <select id="hon-${pick}" class="honorific">
+              <option value="Mr.">Mr.</option>
+              <option value="Ms.">Ms.</option>
+            </select>
+            <button class="btn-primary download-btn" data-member="${pick}">Download Card</button>
+          </div>
+        `;
         resWrap.classList.remove('hidden');
         box.classList.add('box-highlight');
+
+        const listEl = resWrap.querySelector('.result-items');
+        if (counts.size > 0) enableReorder(listEl);
+
+        // Hook up download
+        resWrap.querySelector('.download-btn').addEventListener('click', () => {
+          const honorific = resWrap.querySelector('.honorific').value;
+          downloadCard(pick, listEl, honorific);
+        });
       }
 
       revealed.add(pick);
@@ -348,6 +428,63 @@
       }
     }
     showNextBtn.addEventListener('click', revealOneRandomMember);
+
+    // Build and download the card PNG
+    async function downloadCard(member, listEl, honorific){
+      const items = Array.from(listEl.querySelectorAll('.title-count'));
+      if(items.length === 0){ alert('No crowns to include.'); return; }
+
+      const entries = items.map(el => {
+        const title = el.querySelector('.ttext').textContent.trim();
+        const cntTxt = el.querySelector('.tcnt')?.textContent.trim() || 'x1';
+        const n = Number((cntTxt || 'x1').replace(/^x/i,'').trim()) || 1;
+        // Replace Mx. with chosen honorific
+        const display = title.replace(/^Mx\./, honorific);
+        return { display, count: n };
+      });
+	  
+	  // remove recipient's full name by partial first-name match
+	  const first = (member || '').split(/\s+/)[0]; // e.g., "Tim" from "Tim"
+	  const rx = new RegExp('\\b' + escapeRegExp(first) + '\\b', 'i');
+	  const footerNames = SIGNERS_FULL.filter(n => !rx.test(n));
+
+      // Build off-screen card node
+      const card = document.createElement('div');
+      card.className = 'download-card';
+      card.innerHTML = `
+        <div class="card-header">
+		  <div class="grad grad-left"></div>
+		  <img src="${LOGO_URL}" class="card-logo" alt="Rocket Software logo">
+		  <div class="grad grad-right"></div>
+		</div>
+		<div class="card-title">Crown & Kudos</div>
+        <div class="card-sub">
+		  Dear <strong>${member}</strong>, we proudly recognize you with the following crowns (titles) — a celebration of your impact and spirit.<br>
+		  We’re proud to work with you. Keep up the great work.
+		</div>
+        <div class="card-list">
+          ${entries.map(e => `<span class="card-pill">${e.display}${e.count>1?` ×${e.count}`:''}</span>`).join('<br>')}
+        </div>
+        <div class="card-footer">
+		  With love from <strong>Team Bicycle</strong>,<br><br>
+		  ${footerNames.join(', ')}.
+		</div>
+      `;
+      document.body.appendChild(card);
+
+      try{
+        const canvas = await html2canvas(card, { scale: 2, useCORS: true, backgroundColor: null });
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `${member.replace(/\s+/g,'_')}_crowns.png`;
+        a.click();
+      }catch(err){
+        console.error(err);
+        alert('Could not generate the card. If the logo is remote, ensure it is same-origin or CORS-enabled.');
+      }finally{
+        document.body.removeChild(card);
+      }
+    }
 
     // Clear all data
     clearAllBtn.addEventListener('click', async ()=>{
