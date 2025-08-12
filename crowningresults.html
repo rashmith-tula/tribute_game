@@ -89,57 +89,121 @@
     @keyframes spin { to { transform:rotate(360deg); } }
     #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 14px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); display: none; z-index: 9999; max-width: calc(100vw - 40px); text-align: center;}
 
-    /* --- Download card styles (rendered off-screen) --- */
-    .download-card{
-	  width: 794px;               /* A4 width at ~96dpi */
-	  height: 1123px;             /* A4 height at ~96dpi */
+    /* --- Download card: A4 portrait, certificate style --- */
+	.download-card{
+	  /* A4 at ~96dpi */
+	  width: 794px;
+	  height: 1123px;
+
+	  /* layout + look */
 	  padding: 32px 36px;
 	  background: linear-gradient(180deg, #fdf2ff 0%, #f0f9ff 100%);
 	  border-radius: 16px;
 	  border: 3px solid #a78bfa;
 	  box-shadow: 0 12px 28px rgba(0,0,0,0.15);
 	  color: #111827;
-	  position: fixed; left: -9999px; top: -9999px; /* keep off-screen for capture */
+
+	  /* render off-screen for capture */
+	  position: fixed; left: -9999px; top: -9999px;
+
+	  /* typography base */
 	  font-family: "Segoe UI", Roboto, Arial, sans-serif;
-	  display: flex; flex-direction: column;
+	  font-size: 18px;         /* body size */
+	  line-height: 1.45;
+
+	  display: flex;
+	  flex-direction: column;
 	}
-    /* centered logo flanked by gradient rails */
-	.card-header{ display:flex; align-items:center; gap:14px; margin-bottom: 10px; }
-	.card-logo{ height:48px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
-	.grad{ flex:1; height:8px; border-radius:9999px; }
+
+	/* centered logo flanked by gradient rails */
+	.card-header{
+	  display:flex;
+	  align-items:center;
+	  gap:14px;
+	  margin-bottom: 10px;
+	}
+	.card-logo{
+	  height:48px;
+	  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+	}
+	.grad{
+	  flex:1;
+	  height:8px;
+	  border-radius:9999px;
+	}
 	.grad-left{  background: linear-gradient(90deg, #7c3aed, #ec4899); }
 	.grad-right{ background: linear-gradient(270deg, #7c3aed, #ec4899); }
 
+	/* program/title */
 	.card-title{
-	  font-size: 28px; font-weight: 800; text-align:center; margin: 6px 0 12px;
+	  font-size: 44px;         /* big headline */
+	  font-weight: 900;
+	  letter-spacing: 0.5px;
+	  text-align:center;
+	  margin: 8px 0 16px;
 	  background: linear-gradient(90deg,#7c3aed,#ec4899);
-	  -webkit-background-clip: text; background-clip: text; color: transparent;
+	  -webkit-background-clip: text;
+	  background-clip: text;
+	  color: transparent;
 	}
 
-	.card-sub{ color:#374151; margin: 6px 0 14px; text-align:center; }
+	/* recipient line + blurb */
+	.card-sub{
+	  color:#374151;
+	  text-align:center;
+	  font-size: 20px;         /* supporting copy */
+	  line-height: 1.55;
+	  margin: 8px 0 18px;
+	}
+	.card-sub strong{
+	  font-size: 28px;         /* recipient emphasis */
+	  font-weight: 800;
+	}
 
-	/* body area grows; list uses newspaper-style columns */
-	.card-body{ flex:1; display:flex; flex-direction:column; }
+	/* content area grows to fill page */
+	.card-body{
+	  flex:1;
+	  display:flex;
+	  flex-direction:column;
+	}
+
+	/* titles (crowns) list — stacked, with multi-column support via JS */
 	.card-list{
-	  display:block;               /* not flex; allows columns + <br> breaks */
-	  column-gap: 14px;
-	  /* column-count is set dynamically via JS for 1–3 columns */
-	}
-	.card-pill{
-	  display: inline-block;       /* pill sized to content */
-	  background:#fff; border:1px solid #e5e7eb; border-radius: 9999px;
-	  padding: 8px 14px; margin-bottom: 8px;
-	  box-shadow: 0 2px 6px rgba(0,0,0,0.05); font-weight: 600;
-	  break-inside: avoid;
-	}
-	/* crown icon before every title */
-	.card-pill::before{
-	  content: "👑"; margin-right: 8px; font-size: 0.95em; line-height: 1;
+	  display:block;           /* not flex; allows <br> and columns */
+	  column-gap: 16px;        /* spacing between columns */
+	  /* column-count is set dynamically in JS (1–3) */
 	}
 
+	/* each crown/title as a pill on its own line */
+	.card-pill{
+	  display: inline-block;
+	  background:#fff;
+	  border:1px solid #e5e7eb;
+	  border-radius: 9999px;
+	  padding: 10px 16px;
+	  margin-bottom: 10px;
+	  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+	  font-weight: 600;
+	  font-size: 18px;
+	  break-inside: avoid;     /* avoid splitting across columns */
+	}
+
+	/* crown icon prefix for every title */
+	.card-pill::before{
+	  content: "👑";
+	  margin-right: 10px;
+	  font-size: 1em;
+	  line-height: 1;
+	}
+
+	/* footer signatures */
 	.card-footer{
-	  margin-top: 10px; font-size: 14px; color:#374151;
-	  padding-top:10px; border-top: 1px dashed #cbd5e1; text-align:center;
+	  font-size: 16px;
+	  line-height: 1.5;
+	  text-align:center;
+	  margin-top: 14px;
+	  padding-top: 12px;
+	  border-top: 1px dashed #cbd5e1;
 	}
   </style>
 </head>
@@ -486,8 +550,8 @@
 	  const listNode = card.querySelector('.card-list');
 
 	  // Estimate how many items fit per column in A4 portrait.
-	  // Roughly ~24 per column at this font/pill size:
-	  const perCol = 24;
+	  // Roughly ~18 per column at this font/pill size:
+	  const perCol = 18;
 	  const neededCols = Math.ceil(entries.length / perCol);
 	  const cols = Math.max(1, Math.min(3, neededCols));  // clamp 1..3
 
