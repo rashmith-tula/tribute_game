@@ -74,6 +74,10 @@
     .result-list { margin-top:8px; }
     .title-count { display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; margin:6px 0; cursor:grab; }
     .title-count.dragging { opacity: .6; }
+    .title-count .ttext::before {
+      content: "👑";
+      margin-right: 6px;
+    }
     .result-items { margin-top:6px; }
 
     .download-row { margin-top:10px; display:flex; gap:10px; align-items:center; }
@@ -107,10 +111,17 @@
       -webkit-background-clip: text; background-clip: text; color: transparent;
     }
     .card-sub { color:#374151; margin: 6px 0 16px; }
-    .card-list { margin: 14px 0 18px; display:flex; flex-wrap:wrap; gap:10px; }
+    .card-list { margin: 14px 0 18px; display:block; }
     .card-pill {
+	  display: inline-block; margin-bottom: 8px; 
       background: #fff; border:1px solid #e5e7eb; border-radius: 9999px; padding: 8px 14px;
       box-shadow: 0 2px 6px rgba(0,0,0,0.05); font-weight: 600;
+    }
+    .card-pill::before {
+      content: "👑";
+      margin-right: 8px;
+      font-size: 0.95em;
+      line-height: 1;
     }
     .card-footer {
       margin-top: 14px; font-size: 14px; color:#374151;
@@ -426,15 +437,16 @@
           <img src="${LOGO_URL}" class="card-logo" alt="Rocket Software logo">
         </div>
         <div class="card-sub">
-          <strong>The Team Bicycle</strong> awards <strong>${member}</strong> the following titles
-          and feels proud to work with you. Keep up the good work!
-        </div>
+		  <strong>${member}</strong>, we proudly recognize you with the following crowns (titles) — a celebration of your impact and spirit.<br>
+		  We’re proud to work with you. Keep up the great work.
+		</div>
         <div class="card-list">
-          ${entries.map(e => `<span class="card-pill">${e.display}${e.count>1?` ×${e.count}`:''}</span>`).join('')}
+          ${entries.map(e => `<span class="card-pill">${e.display}${e.count>1?` ×${e.count}`:''}</span>`).join('<br>')}
         </div>
         <div class="card-footer">
-          With Love From, Sudhi Balan, Robert Russell, Timothy Wake, Vivek Pandit, Prasanta Midya, Rashmith Tula, Nirmal Balasundaram, Aditya Shinde, Mangesh Diyewar, Haripriya, Kashika Parmar, Akanksha Shinde, Rishabh Gupta, Raunit Kohli, Kewal Pithadia.
-        </div>
+		  With love from <strong>Team Bicycle</strong>,<br>
+		  Sudhi Balan, Robert Russell, Timothy Wake, Vivek Pandit, Prasanta Midya, Rashmith Tula, Nirmal Balasundaram, Aditya Shinde, Mangesh Diyewar, Haripriya, Kashika Parmar, Akanksha Shinde, Rishabh Gupta, Raunit Kohli, Kewal Pithadia.
+		</div>
       `;
       document.body.appendChild(card);
 
