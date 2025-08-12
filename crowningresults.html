@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tribute Game – Crown Your Team</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+  <!-- html2canvas for image download -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBd3CpowxCtVvnqV5MlyN-t0jVEMvDTXgo",
+      authDomain: "tributegame-5b871.firebaseapp.com",
+      projectId: "tributegame-5b871",
+      storageBucket: "tributegame-5b871.appspot.com",
+      messagingSenderId: "757938343666",
+      appId: "1:757938343666:web:aa5f13826b0e360b0a8a6b",
+      measurementId: "G-5SDNERCN2D"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    db.settings({ experimentalForceLongPolling: true, useFetchStreams: false });
+
+    // If your logo has a different name/path, change this:
+    const LOGO_URL = 'rocket_logo.png';
+  </script>
+
+  <style>
+    :root { --primary:#2563eb; --muted:#6b7280; --danger:#dc2626; --bg:#f7fafc; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body { font-family: Arial, sans-serif; background:var(--bg); margin:0; }
+    header { background:#0f172a; color:#fff; padding:16px 24px; }
+    h1 { margin:0; font-size:22px; }
+    main { max-width:1200px; margin:24px auto; background:#fff; padding:24px; border-radius:12px; box-shadow:0 4px 18px rgba(0,0,0,0.08);}
+
+    /* instructions */
+    .instructions { margin: 0 0 12px 18px; color:#374151; }
+    .instructions li { margin: 6px 0; }
+
+    /* 75 / 25 layout that expands to full */
+    .layout { display:grid; grid-template-columns: 3fr 1fr; gap:16px; align-items:start; }
+    .layout.full { grid-template-columns: 1fr; }
+
+    /* left: members grid */
+    .grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; }
+    .member-box { border:2px dashed #cbd5e1; border-radius:12px; padding:10px; min-height:140px; background:#f8fafc; transition: border-color .2s, box-shadow .2s; }
+    .member-header { font-weight:bold; margin-bottom:8px; color:#0f172a; }
+    .dropzone { min-height:72px; display:flex; flex-wrap:wrap; gap:6px; align-items: flex-start; }
+    .chip { background:#e0f2fe; border:1px solid #7dd3fc; color:#0c4a6e; padding:6px 10px; border-radius:9999px; display:inline-flex; align-items:center; cursor:grab; }
+    .dropzone .chip { display:inline-flex !important; flex: 0 0 auto; line-height: 1.2; padding: 6px 10px; }
+    .box-highlight { border-color:#16a34a; box-shadow:0 0 0 3px rgba(22,163,74,0.15); }
+
+    /* right: titles list */
+    .sidebar { border-left:1px solid #e5e7eb; padding-left:12px; }
+    .sidebar h3 { margin:4px 0 10px; }
+    .pool-list { overflow:auto; border:2px dashed #cbd5e1; border-radius:10px; padding:10px; background:#f1f5f9; display:flex; flex-direction:column; gap:8px; }
+    .pool-row { display:block; } /* one title per row in sidebar */
+
+    /* controls */
+    .controls { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    button { padding:10px 14px; border:none; border-radius:8px; cursor:pointer; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-secondary { background:var(--muted); color:#fff; }
+    .btn-danger { background:var(--danger); color:#fff; }
+    .hidden { display:none !important; }
+    .small { color:#334155; font-size:13px; }
+
+    .result-list { margin-top:8px; }
+    .title-count { display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:8px; margin:6px 0; cursor:grab; }
+    .title-count.dragging { opacity: .6; }
+    .result-items { margin-top:6px; }
+
+    .download-row { margin-top:10px; display:flex; gap:10px; align-items:center; }
+    .download-row select { padding:6px 8px; border:1px solid #cbd5e1; border-radius:8px; }
+    .download-row .btn-primary { padding:8px 12px; }
+
+    /* spinner + toast */
+    .spinner { width:20px; height:20px; border:3px solid #e5e7eb; border-top-color:var(--primary); border-radius:50%; animation: spin 1s linear infinite; display:none; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 14px; border-radius: 8px; box-shadow: 0 6px 16px rgba(0,0,0,0.2); display: none; z-index: 9999; max-width: calc(100vw - 40px); text-align: center;}
+
+    /* --- Download card styles (rendered off-screen) --- */
+    .download-card {
+      width: 1000px;
+      padding: 28px;
+      background: linear-gradient(135deg, #fdf2ff 0%, #f0f9ff 100%);
+      border-radius: 20px;
+      border: 3px solid #a78bfa; /* violet */
+      box-shadow: 0 12px 28px rgba(0,0,0,0.15);
+      color: #111827;
+      position: fixed; left: -9999px; top: -9999px; /* off-screen */
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    .card-header {
+      display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;
+    }
+    .card-logo { height: 40px; }
+    .card-title {
+      font-size: 28px; font-weight: 800;
+      background: linear-gradient(90deg,#7c3aed,#ec4899);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .card-sub { color:#374151; margin: 6px 0 16px; }
+    .card-list { margin: 14px 0 18px; display:flex; flex-wrap:wrap; gap:10px; }
+    .card-pill {
+      background: #fff; border:1px solid #e5e7eb; border-radius: 9999px; padding: 8px 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05); font-weight: 600;
+    }
+    .card-footer {
+      margin-top: 14px; font-size: 14px; color:#374151;
+      padding-top:10px; border-top: 1px dashed #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <header><h1>Crown Your Team</h1></header>
+
+  <main>
+    <ul class="instructions">
+      <li>This is in anonymous mode; the app doesn't know who you are.</li>
+      <li>The <strong>crowns list includes all crowns submitted by the entire team</strong>.</li>
+      <li>You can <strong>pick any crown</strong> from the list, <strong>not just the ones you added</strong>.</li>
+      <li>Pick a crown and crown the teammate it fits best (drag and drop).</li>
+      <li>Crown at least 14 of 15 teammates (you may skip yourself).</li>
+      <li>After crowning all, click on <strong>Submit</strong>.</li>
+    </ul>
+
+    <div class="layout" id="layout">
+      <!-- Left: members -->
+      <section>
+        <div id="members" class="grid"></div>
+
+        <div class="controls">
+          <button id="submitAssign" class="btn-primary">Submit</button>
+          <div id="spinner" class="spinner"></div>
+          <button id="unlockResults" class="btn-secondary">Unlock Results</button>
+          <button id="showNext" class="btn-secondary hidden">Next Member Result</button>
+          <button id="clearAll" class="btn-danger">Clear All</button>
+        </div>
+      </section>
+
+      <!-- Right: crowns list -->
+      <aside id="sidebar" class="sidebar">
+        <h3>Available Crowns</h3>
+        <div id="pool" class="pool-list" style="min-height:720px; max-height: 92vh"></div>
+      </aside>
+    </div>
+  </main>
+
+  <div id="toast">Crowning done successfully!</div>
+
+  <script>
+    const TEAM_MEMBERS = [
+      "Sudhi","Robert","Tim","Rishabh","Aditya","Raunit","Mangesh",
+      "Rashmith","Prasanta","Haripriya","Kashika","Akanksha","Vivek",
+      "Nirmal","Kewal"
+    ];
+
+    // drag state
+    let draggedEl = null;
+    let resultsMode = false;
+    let unlocked = false;
+    const revealed = new Set();
+    const memberBoxByName = new Map();
+
+    // elements
+    const poolZone = document.getElementById('pool');
+    const membersGrid = document.getElementById('members');
+    const submitAssignBtn = document.getElementById('submitAssign');
+    const unlockBtn = document.getElementById('unlockResults');
+    const showNextBtn = document.getElementById('showNext');
+    const clearAllBtn = document.getElementById('clearAll');
+    const sidebar = document.getElementById('sidebar');
+    const spinner = document.getElementById('spinner');
+    const toast = document.getElementById('toast');
+    const layout = document.getElementById('layout');
+
+    // utils
+    function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+    function showToast(msg='Titles submitted'){ toast.textContent=msg; toast.style.display='block'; setTimeout(()=>toast.style.display='none',2000); }
+    function setSpinning(on){ spinner.style.display = on ? 'inline-block' : 'none'; }
+
+    // DnD (pool and member boxes)
+    function createChip(text){
+      const chip = document.createElement('span');
+      chip.className = 'chip pool-row';
+      chip.textContent = text;
+      chip.draggable = true;
+      chip.addEventListener('dragstart', (e)=>{ if(resultsMode) return; draggedEl=chip; e.dataTransfer.setData('text/plain', text); });
+      chip.addEventListener('dragend', ()=>{ draggedEl=null; });
+      return chip;
+    }
+    function makeDropzone(zone){
+      zone.addEventListener('dragover', (e)=>{ if(resultsMode) return; e.preventDefault(); });
+      zone.addEventListener('drop', (e)=>{
+        if(resultsMode) return;
+        e.preventDefault();
+        if(!draggedEl) return;
+        zone.appendChild(draggedEl);
+        if(zone === poolZone){ draggedEl.classList.add('pool-row'); } else { draggedEl.classList.remove('pool-row'); }
+      });
+    }
+
+    function renderMembers(){
+      membersGrid.innerHTML = '';
+      memberBoxByName.clear();
+      shuffle([...TEAM_MEMBERS]).forEach(name=>{
+        const box = document.createElement('div');
+        box.className = 'member-box';
+        box.dataset.member = name;
+
+        const header = document.createElement('div');
+        header.className = 'member-header';
+        header.textContent = name;
+
+        const dz = document.createElement('div');
+        dz.className = 'dropzone';
+        makeDropzone(dz);
+
+        const resultWrap = document.createElement('div');
+        resultWrap.className = 'result-list hidden';
+
+        box.appendChild(header);
+        box.appendChild(dz);
+        box.appendChild(resultWrap);
+
+        membersGrid.appendChild(box);
+        memberBoxByName.set(name, box);
+      });
+      makeDropzone(poolZone);
+    }
+
+    async function loadTitles(){
+      const snap = await db.collection('titles').get();
+      const map = new Map();
+      snap.forEach(doc=>{
+        const t = (doc.data().text||'').trim();
+        if(!t) return;
+        const key = t.toLowerCase();
+        if(!map.has(key)) map.set(key, t);
+      });
+      const arr = Array.from(map.values()).sort((a,b)=>a.localeCompare(b));
+      poolZone.innerHTML = '';
+      arr.forEach(t=> poolZone.appendChild(createChip(t)));
+    }
+
+    function getAssignments(){
+      const boxes = membersGrid.querySelectorAll('.member-box');
+      const res = new Map();
+      boxes.forEach(box=>{
+        const name = box.dataset.member;
+        const titles = Array.from(box.querySelectorAll('.dropzone .chip')).map(c=>c.textContent);
+        res.set(name, titles);
+      });
+      return res;
+    }
+
+    function validateBeforeSubmit() {
+      const assignMap = getAssignments();
+      const empty = [];
+      for (const [member, titles] of assignMap.entries()) { if (!titles.length) empty.push(member); }
+      return { ok: empty.length <= 1, empty };
+    }
+
+    submitAssignBtn.addEventListener('click', async ()=>{
+      const check = validateBeforeSubmit();
+      if (!check.ok) {
+        const preview = check.empty.slice(0, 4).join(', ');
+        const more = check.empty.length > 4 ? ` +${check.empty.length - 4} more` : '';
+        alert(`Please crown at least ${TEAM_MEMBERS.length - 1} teammates (you can skip yourself). Missing: ${preview}${more}`);
+        return;
+      }
+      setSpinning(true);
+      submitAssignBtn.disabled = true;
+
+      const assignMap = getAssignments();
+      try{
+        const batch = db.batch();
+        const now = new Date();
+        for(const [member,titles] of assignMap.entries()){
+          titles.forEach(title=>{
+            const ref = db.collection('assignments').doc();
+            batch.set(ref, { member, title, submittedAt: now });
+          });
+        }
+        await batch.commit();
+        showToast('Titles submitted');
+        renderMembers();
+        await loadTitles();
+      }catch(err){
+        console.error(err);
+        alert('Error submitting assignments: ' + err.message);
+      }finally{
+        setSpinning(false);
+        submitAssignBtn.disabled = false;
+      }
+    });
+
+    // ------- Results mode + Reorder + Download -------
+    function enterResultsMode(){
+      resultsMode = true;
+      sidebar.classList.add('hidden');
+      layout.classList.add('full');
+      unlockBtn.classList.add('hidden');
+      submitAssignBtn.classList.add('hidden');
+      showNextBtn.classList.remove('hidden');
+      membersGrid.querySelectorAll('.chip').forEach(ch=> ch.draggable=false);
+    }
+
+    document.getElementById('unlockResults').addEventListener('click', ()=>{
+      const pw = prompt('Enter admin password:');
+      if(pw === 'BicycleRocks'){
+        unlocked = true;
+        enterResultsMode();
+        alert('Results unlocked.');
+      }else{
+        alert('Incorrect password.');
+      }
+    });
+
+    function enableReorder(listEl){
+      let dragging = null;
+      listEl.querySelectorAll('.title-count').forEach(item=>{
+        item.draggable = true;
+        item.addEventListener('dragstart', ()=>{ dragging=item; item.classList.add('dragging'); });
+        item.addEventListener('dragend', ()=>{ item.classList.remove('dragging'); dragging=null; });
+      });
+      listEl.addEventListener('dragover', (e)=>{
+        e.preventDefault();
+        if(!dragging) return;
+        const siblings = Array.from(listEl.querySelectorAll('.title-count:not(.dragging)'));
+        const after = siblings.find(el => e.clientY <= el.getBoundingClientRect().top + el.offsetHeight/2);
+        if(after) listEl.insertBefore(dragging, after); else listEl.appendChild(dragging);
+      });
+    }
+
+    async function revealOneRandomMember(){
+      if(!unlocked) return alert('Unlock results first.');
+      if(revealed.size === TEAM_MEMBERS.length){
+        showNextBtn.disabled = true;
+        showNextBtn.textContent = 'All results revealed';
+        return;
+      }
+
+      const remaining = TEAM_MEMBERS.filter(n => !revealed.has(n));
+      const pick = remaining[Math.floor(Math.random()*remaining.length)];
+
+      const q = await db.collection('assignments').where('member','==',pick).get();
+      const counts = new Map();
+      q.forEach(doc=>{
+        const t = (doc.data().title||'').trim();
+        if(!t) return;
+        counts.set(t, (counts.get(t)||0)+1);
+      });
+
+      membersGrid.querySelectorAll('.member-box').forEach(b=> b.classList.remove('box-highlight'));
+
+      const box = memberBoxByName.get(pick);
+      if(box){
+        const resWrap = box.querySelector('.result-list');
+        const itemsHTML = Array.from(counts.entries())
+          .sort((a,b)=> b[1]-a[1] || a[0].localeCompare(b[0]))
+          .map(([title,cnt])=> `<div class="title-count"><span class="ttext">${title}</span><span class="tcnt">x${cnt}</span></div>`)
+          .join('');
+
+        resWrap.innerHTML = `
+          <h4>Crowns</h4>
+          <div class="result-items">${itemsHTML || '<div class="small">No crowns yet.</div>'}</div>
+          <div class="download-row">
+            <label for="hon-${pick}">Prefix:</label>
+            <select id="hon-${pick}" class="honorific">
+              <option value="Mr.">Mr.</option>
+              <option value="Ms.">Ms.</option>
+            </select>
+            <button class="btn-primary download-btn" data-member="${pick}">Download Card</button>
+          </div>
+        `;
+        resWrap.classList.remove('hidden');
+        box.classList.add('box-highlight');
+
+        const listEl = resWrap.querySelector('.result-items');
+        if (counts.size > 0) enableReorder(listEl);
+
+        // Hook up download
+        resWrap.querySelector('.download-btn').addEventListener('click', () => {
+          const honorific = resWrap.querySelector('.honorific').value;
+          downloadCard(pick, listEl, honorific);
+        });
+      }
+
+      revealed.add(pick);
+
+      if(revealed.size === TEAM_MEMBERS.length){
+        showNextBtn.disabled = true;
+        showNextBtn.textContent = 'All results revealed';
+      }
+    }
+    showNextBtn.addEventListener('click', revealOneRandomMember);
+
+    // Build and download the card PNG
+    async function downloadCard(member, listEl, honorific){
+      const items = Array.from(listEl.querySelectorAll('.title-count'));
+      if(items.length === 0){ alert('No crowns to include.'); return; }
+
+      const entries = items.map(el => {
+        const title = el.querySelector('.ttext').textContent.trim();
+        const cntTxt = el.querySelector('.tcnt')?.textContent.trim() || 'x1';
+        const n = Number((cntTxt || 'x1').replace(/^x/i,'').trim()) || 1;
+        // Replace Mx. with chosen honorific
+        const display = title.replace(/^Mx\./, honorific);
+        return { display, count: n };
+      });
+
+      // Build off-screen card node
+      const card = document.createElement('div');
+      card.className = 'download-card';
+      card.innerHTML = `
+        <div class="card-header">
+          <div class="card-title">Crown & Kudos</div>
+          <img src="${LOGO_URL}" class="card-logo" alt="Rocket Software logo">
+        </div>
+        <div class="card-sub">
+          <strong>The Team Bicycle</strong> awards <strong>${member}</strong> the following titles
+          and feels proud to work with you. Keep up the good work!
+        </div>
+        <div class="card-list">
+          ${entries.map(e => `<span class="card-pill">${e.display}${e.count>1?` ×${e.count}`:''}</span>`).join('')}
+        </div>
+        <div class="card-footer">
+          With Love From, Sudhi Balan, Robert Russell, Timothy Wake, Vivek Pandit, Prasanta Midya, Rashmith Tula, Nirmal Balasundaram, Aditya Shinde, Mangesh Diyewar, Haripriya, Kashika Parmar, Akanksha Shinde, Rishabh Gupta, Raunit Kohli, Kewal Pithadia.
+        </div>
+      `;
+      document.body.appendChild(card);
+
+      try{
+        const canvas = await html2canvas(card, { scale: 2, useCORS: true, backgroundColor: null });
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `${member.replace(/\s+/g,'_')}_crowns.png`;
+        a.click();
+      }catch(err){
+        console.error(err);
+        alert('Could not generate the card. If the logo is remote, ensure it is same-origin or CORS-enabled.');
+      }finally{
+        document.body.removeChild(card);
+      }
+    }
+
+    // Clear all data
+    clearAllBtn.addEventListener('click', async ()=>{
+      const pw = prompt('Enter password to CLEAR ALL data:');
+      if(pw !== 'BicycleRocks') return alert('Incorrect password.');
+      if(!confirm('This will permanently delete ALL the crowns and their assignments. Continue?')) return;
+
+      async function deleteCollection(name){
+        const snap = await db.collection(name).get();
+        const batch = db.batch();
+        let count=0;
+        snap.forEach(doc=>{ batch.delete(doc.ref); count++; });
+        if(count>0) await batch.commit();
+        return count;
+      }
+
+      try{
+        let total = 0;
+        total += await deleteCollection('assignments');
+        total += await deleteCollection('titles');
+        alert('All data purged. Deleted docs: '+total);
+
+        revealed.clear();
+        showNextBtn.disabled = false;
+        showNextBtn.textContent = 'Next Member Result';
+        sidebar.classList.remove('hidden');
+        layout.classList.remove('full');
+        unlockBtn.classList.remove('hidden');
+        submitAssignBtn.classList.remove('hidden');
+        resultsMode = false;
+
+        renderMembers();
+        await loadTitles();
+      }catch(err){
+        console.error(err);
+        alert('Error clearing data: ' + err.message);
+      }
+    });
+
+    // Init
+    renderMembers();
+    loadTitles();
+  </script>
+</body>
+</html>
